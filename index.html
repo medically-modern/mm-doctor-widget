@@ -77,7 +77,7 @@
 <body>
 <div class="wrap">
   <h2>Find your doctor</h2>
-  <p class="help">Enter your doctor's name and we'll verify it against the national provider registry. Adding phone or clinic helps narrow it down.</p>
+  <p class="help">Enter your doctor's name <strong>and</strong> either the clinic or phone — we need a second detail to pick out the right provider.</p>
 
   <div class="row">
     <div><label>First name *</label><input type="text" id="firstName" autocomplete="off"></div>
@@ -134,6 +134,10 @@
     const signals = readSignals();
     if (!signals.firstName || !signals.lastName) {
       setStatus('Enter both first and last name to search.', true);
+      return;
+    }
+    if (!signals.clinic && !signals.phone) {
+      setStatus('Add the clinic name or the doctor\u2019s phone number so we can match the right provider.', true);
       return;
     }
     selectedEl.style.display = 'none';
