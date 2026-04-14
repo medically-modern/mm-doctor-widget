@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MM Doctor Lookup</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- JotForm Custom Widget SDK -->
+<script src="https://cdn.jotfor.ms/JFCustomWidget-1.0.min.js"></script>
+<style>
+  :root {
+    --brand: #0B5FFF;
+    --border: #d4d4d8;
+    --bg-soft: #f8fafc;
+    --text: #111827;
+    --muted: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text); }
+  .wrap { padding: 4px; }
+  .status { font-size: 14px; color: var(--muted); padding: 10px 4px; }
+  .status.err { color: #b91c1c; }
+  .btn {
+    display: inline-block; padding: 10px 14px; border: 1px solid var(--brand);
+    background: var(--brand); color: #fff; border-radius: 8px; font-weight: 600;
+    cursor: pointer; font-size: 14px;
+  }
+  .btn.secondary { background: #fff; color: var(--brand); }
+  .list { display: grid; gap: 10px; margin-top: 8px; }
+  .card {
+    display: grid; grid-template-columns: 64px 1fr auto; gap: 12px;
+    padding: 10px; border: 1px solid var(--border); border-radius: 10px;
+    background: #fff; cursor: pointer; align-items: center; transition: border-color .15s, background .15s;
+  }
+  .card:hover { border-color: var(--brand); background: var(--bg-soft); }
+  .card.selected { border-color: var(--brand); background: #eff6ff; box-shadow: 0 0 0 2px rgba(11,95,255,.15); }
+  .card img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #e5e7eb; }
+  .info { min-width: 0; }
+  .name { font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+  .npi { font-size: 11px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .pick { font-size: 13px; color: var(--brand); font-weight: 600; }
+  .none {
+    padding: 12px; border: 1px dashed var(--border); border-radius: 10px;
+    color: var(--muted); font-size: 13px; text-align: center;
+  }
+  .retry { margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="status" class="status">Waiting for doctor info…</div>
+  <div id="list" class="list" aria-live="polite"></div>
+  <div id="actions" style="display:none; margin-top:10px;">
+    <button class="btn secondary" id="none-btn" type="button">None of these — I'll enter manually</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // === Config — override via widget settings in the JotForm builder ===
+  const DEFAULTS = {
+    apiBase: 'https://mm-doctor-api.up.railway.app',
+    firstNameField: 'doctorFirstName',
+    lastNameField: 'doctorLastName',
+    phoneField: 'doctorPhone',
+    clinicField: 'doctorClinic',
+    stateField: 'doctorState'
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const listEl = $('list');
+  const statusEl = $('status');
+  const actionsEl = $('actions');
+  let settings = { ...DEFAULTS };
+  let selected = null;
+  let lastSignature = '';
+  let inflight = null;
+
+  function setStatus(msg, isErr) {
+    statusEl.textContent = msg || '';
+    statusEl.className = 'status' + (isErr ? ' err' : '');
+  }
+
+  function readSignals(data) {
+    // data is the form's current fields, keyed by question name
+    const pick = (name) => (data && data[name] && String(data[name]).trim()) || '';
+    return {
+      firstName: pick(settings.firstNameField),
+      lastName: pick(settings.lastNameField),
+      phone: pick(settings.phoneField),
+      clinic: pick(settings.clinicField),
+      state: pick(settings.stateField)
+    };
+  }
+
+  function signatureOf(s) {
+    return [s.firstName, s.lastName, s.phone, s.clinic, s.state].join('||').toLowerCase();
+  }
+
+  async function doLookup(signals) {
+    if (!signals.firstName || !signals.lastName) {
+      setStatus('Enter a first and last name to search for your doctor.');
+      listEl.innerHTML = '';
+      actionsEl.style.display = 'none';
+      return;
+    }
+    setStatus('Searching for your doctor…');
+    listEl.innerHTML = '';
+    actionsEl.style.display = 'none';
+
+    try {
+      if (inflight) inflight.abort();
+      inflight = new AbortController();
+      const res = await fetch(settings.apiBase.replace(/\/$/, '') + '/api/lookup-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signals),
+        signal: inflight.signal
+      });
+      if (!res.ok) throw new Error('API error ' + res.status);
+      const data = await res.json();
+      renderCandidates(data.candidates || []);
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      setStatus('Couldn’t load doctor matches. You can still continue.', true);
+      actionsEl.style.display = 'block';
+    }
+  }
+
+  function renderCandidates(list) {
+    if (!list.length) {
+      setStatus('No matches found. Double-check the name, or continue without selecting.');
+      listEl.innerHTML = '<div class="none">We couldn’t find a match in the national registry.</div>';
+      actionsEl.style.display = 'block';
+      return;
+    }
+    setStatus('Is this your doctor? Pick one below.');
+    listEl.innerHTML = '';
+    list.forEach((c, i) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.npi = c.npi;
+      card.innerHTML = `
+        <img src="${c.photo_url}" alt="" loading="lazy" onerror="this.src='data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 80 80\\'><rect width=\\'80\\' height=\\'80\\' fill=\\'#e5e7eb\\'/></svg>')}'">
+        <div class="info">
+          <div class="name">${escapeHtml(c.displayName)}</div>
+          <div class="sub">${escapeHtml(c.specialty || '')}${c.clinic ? ' · ' + escapeHtml(c.clinic) : ''}</div>
+          <div class="sub">${escapeHtml(c.address || '')}</div>
+          <div class="npi">NPI ${c.npi}</div>
+        </div>
+        <div class="pick">Select</div>
+      `;
+      card.addEventListener('click', () => selectCandidate(c, card));
+      listEl.appendChild(card);
+    });
+    actionsEl.style.display = 'block';
+  }
+
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function selectCandidate(c, cardEl) {
+    selected = c;
+    Array.from(listEl.querySelectorAll('.card')).forEach(el => el.classList.remove('selected'));
+    if (cardEl) cardEl.classList.add('selected');
+    // Immediately send value to JotForm so validation passes.
+    JFCustomWidget.sendData({
+      valid: true,
+      value: JSON.stringify({
+        npi: c.npi,
+        displayName: c.displayName,
+        clinic: c.clinic,
+        address: c.address,
+        phone: c.phone
+      })
+    });
+  }
+
+  JFCustomWidget.subscribe('ready', function (data) {
+    const w = JFCustomWidget.getWidgetSettings() || {};
+    settings = {
+      apiBase: w.apiBase || DEFAULTS.apiBase,
+      firstNameField: w.firstNameField || DEFAULTS.firstNameField,
+      lastNameField: w.lastNameField || DEFAULTS.lastNameField,
+      phoneField: w.phoneField || DEFAULTS.phoneField,
+      clinicField: w.clinicField || DEFAULTS.clinicField,
+      stateField: w.stateField || DEFAULTS.stateField
+    };
+    JFCustomWidget.fireEvent('resize', { height: 260 });
+  });
+
+  // Runs every time any field in the form changes — the SDK gives us all fields.
+  JFCustomWidget.subscribe('populate', function (_existing) {
+    // existing may contain a previously saved value (if editing a submission)
+  });
+
+  // The SDK calls 'change' with current form data on every field change.
+  JFCustomWidget.subscribe('change', function (data) {
+    const signals = readSignals(data);
+    const sig = signatureOf(signals);
+    if (sig === lastSignature) return;
+    lastSignature = sig;
+    clearTimeout(window.__mmDebounce);
+    window.__mmDebounce = setTimeout(() => doLookup(signals), 400);
+  });
+
+  JFCustomWidget.subscribe('submit', function () {
+    // If nothing selected, still let the form submit (validation is handled by parent fields).
+    JFCustomWidget.sendSubmit({
+      valid: true,
+      value: selected ? JSON.stringify({
+        npi: selected.npi,
+        displayName: selected.displayName,
+        clinic: selected.clinic,
+        address: selected.address,
+        phone: selected.phone
+      }) : ''
+    });
+  });
+
+  document.getElementById('none-btn').addEventListener('click', () => {
+    selected = null;
+    Array.from(listEl.querySelectorAll('.card')).forEach(el => el.classList.remove('selected'));
+    JFCustomWidget.sendData({ valid: true, value: '' });
+    setStatus('No doctor selected — you can continue and we’ll confirm later.');
+  });
+})();
+</script>
+</body>
+</html>
