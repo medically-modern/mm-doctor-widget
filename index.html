@@ -4,76 +4,111 @@
 <meta charset="utf-8">
 <title>MM Doctor Lookup</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<!-- JotForm Custom Widget SDK -->
-<script src="https://cdn.jotfor.ms/JFCustomWidget-1.0.min.js"></script>
 <style>
   :root {
-    --brand: #0B5FFF;
+    --brand: #2c6e6a;        /* match MM teal from injectCSS */
+    --brand-soft: #e6f2f1;
     --border: #d4d4d8;
     --bg-soft: #f8fafc;
-    --text: #111827;
+    --text: #1a1a2e;
     --muted: #6b7280;
+    --ok: #0f766e;
+    --ok-bg: #ecfdf5;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text); }
-  .wrap { padding: 4px; }
-  .status { font-size: 14px; color: var(--muted); padding: 10px 4px; }
-  .status.err { color: #b91c1c; }
-  .btn {
-    display: inline-block; padding: 10px 14px; border: 1px solid var(--brand);
-    background: var(--brand); color: #fff; border-radius: 8px; font-weight: 600;
-    cursor: pointer; font-size: 14px;
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text); background: transparent;
   }
+  .wrap { padding: 14px; }
+  h2 { font-size: 16px; margin: 0 0 10px; font-weight: 600; color: var(--text); }
+  p.help { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+  .row.single { grid-template-columns: 1fr; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
+  input[type="text"], input[type="tel"] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: #fff; color: var(--text);
+  }
+  input[type="text"]:focus, input[type="tel"]:focus {
+    outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(44,110,106,.15);
+  }
+  .btn {
+    display: inline-block; padding: 10px 16px; border: 1px solid var(--brand);
+    background: var(--brand); color: #fff; border-radius: 8px; font-weight: 600;
+    cursor: pointer; font-size: 14px; font-family: inherit;
+  }
+  .btn:disabled { opacity: .6; cursor: not-allowed; }
   .btn.secondary { background: #fff; color: var(--brand); }
-  .list { display: grid; gap: 10px; margin-top: 8px; }
+  .status { font-size: 13px; color: var(--muted); padding: 10px 0; }
+  .status.err { color: #b91c1c; }
+  .list { display: grid; gap: 8px; margin-top: 8px; }
   .card {
-    display: grid; grid-template-columns: 64px 1fr auto; gap: 12px;
+    display: grid; grid-template-columns: 56px 1fr auto; gap: 12px;
     padding: 10px; border: 1px solid var(--border); border-radius: 10px;
-    background: #fff; cursor: pointer; align-items: center; transition: border-color .15s, background .15s;
+    background: #fff; cursor: pointer; align-items: center;
+    transition: border-color .15s, background .15s;
   }
   .card:hover { border-color: var(--brand); background: var(--bg-soft); }
-  .card.selected { border-color: var(--brand); background: #eff6ff; box-shadow: 0 0 0 2px rgba(11,95,255,.15); }
-  .card img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; background: #e5e7eb; }
+  .card img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: #e5e7eb; }
   .info { min-width: 0; }
-  .name { font-weight: 600; font-size: 15px; line-height: 1.2; }
-  .sub { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
-  .npi { font-size: 11px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .name { font-weight: 600; font-size: 14px; line-height: 1.2; }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+  .npi-mini { font-size: 11px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; margin-top: 2px; }
   .pick { font-size: 13px; color: var(--brand); font-weight: 600; }
-  .none {
-    padding: 12px; border: 1px dashed var(--border); border-radius: 10px;
-    color: var(--muted); font-size: 13px; text-align: center;
+  .selected-card {
+    margin-top: 12px; padding: 14px; border: 2px solid var(--ok);
+    background: var(--ok-bg); border-radius: 10px;
   }
-  .retry { margin-top: 8px; }
+  .selected-card h3 { margin: 0 0 8px; font-size: 14px; color: var(--ok); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  .field-line { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(15,118,110,.15); font-size: 14px; }
+  .field-line:last-child { border-bottom: none; }
+  .field-line .lbl { color: var(--muted); font-size: 12px; }
+  .field-line .val { font-weight: 600; color: var(--text); font-family: ui-monospace, Menlo, monospace; }
+  .copy {
+    margin-left: 8px; padding: 4px 8px; background: #fff; border: 1px solid var(--ok);
+    color: var(--ok); border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+  .copy:active { background: var(--ok); color: #fff; }
+  .none { padding: 12px; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-size: 13px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div id="status" class="status">Waiting for doctor info…</div>
-  <div id="list" class="list" aria-live="polite"></div>
-  <div id="actions" style="display:none; margin-top:10px;">
-    <button class="btn secondary" id="none-btn" type="button">None of these — I'll enter manually</button>
+  <h2>Find your doctor</h2>
+  <p class="help">Enter your doctor's name and we'll verify it against the national provider registry. Adding phone or clinic helps narrow it down.</p>
+
+  <div class="row">
+    <div><label>First name *</label><input type="text" id="firstName" autocomplete="off"></div>
+    <div><label>Last name *</label><input type="text" id="lastName" autocomplete="off"></div>
   </div>
+  <div class="row">
+    <div><label>Clinic (optional)</label><input type="text" id="clinic" autocomplete="off" placeholder="e.g. Acme Medical"></div>
+    <div><label>Phone (optional)</label><input type="tel" id="phone" autocomplete="off" placeholder="555-123-4567"></div>
+  </div>
+  <div class="row single">
+    <div><label>State (2-letter, optional)</label><input type="text" id="state" autocomplete="off" maxlength="2" placeholder="NY"></div>
+  </div>
+
+  <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+    <button class="btn" id="search-btn" type="button">Search</button>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div id="list" class="list" aria-live="polite"></div>
+  <div id="selected" class="selected-card" style="display:none;"></div>
 </div>
 
 <script>
 (function () {
-  // === Config — override via widget settings in the JotForm builder ===
-  const DEFAULTS = {
-    apiBase: 'https://mm-doctor-api.up.railway.app',
-    firstNameField: 'doctorFirstName',
-    lastNameField: 'doctorLastName',
-    phoneField: 'doctorPhone',
-    clinicField: 'doctorClinic',
-    stateField: 'doctorState'
-  };
+  const API_BASE = 'https://mm-doctor-api-production.up.railway.app';
 
   const $ = (id) => document.getElementById(id);
   const listEl = $('list');
   const statusEl = $('status');
-  const actionsEl = $('actions');
-  let settings = { ...DEFAULTS };
-  let selected = null;
-  let lastSignature = '';
+  const selectedEl = $('selected');
+  const btn = $('search-btn');
   let inflight = null;
 
   function setStatus(msg, isErr) {
@@ -81,149 +116,123 @@
     statusEl.className = 'status' + (isErr ? ' err' : '');
   }
 
-  function readSignals(data) {
-    // data is the form's current fields, keyed by question name
-    const pick = (name) => (data && data[name] && String(data[name]).trim()) || '';
+  function esc(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function readSignals() {
     return {
-      firstName: pick(settings.firstNameField),
-      lastName: pick(settings.lastNameField),
-      phone: pick(settings.phoneField),
-      clinic: pick(settings.clinicField),
-      state: pick(settings.stateField)
+      firstName: $('firstName').value.trim(),
+      lastName:  $('lastName').value.trim(),
+      phone:     $('phone').value.trim(),
+      clinic:    $('clinic').value.trim(),
+      state:     $('state').value.trim().toUpperCase()
     };
   }
 
-  function signatureOf(s) {
-    return [s.firstName, s.lastName, s.phone, s.clinic, s.state].join('||').toLowerCase();
-  }
-
-  async function doLookup(signals) {
+  async function search() {
+    const signals = readSignals();
     if (!signals.firstName || !signals.lastName) {
-      setStatus('Enter a first and last name to search for your doctor.');
-      listEl.innerHTML = '';
-      actionsEl.style.display = 'none';
+      setStatus('Enter both first and last name to search.', true);
       return;
     }
-    setStatus('Searching for your doctor…');
+    selectedEl.style.display = 'none';
     listEl.innerHTML = '';
-    actionsEl.style.display = 'none';
+    setStatus('Searching the national provider registry…');
+    btn.disabled = true;
 
     try {
       if (inflight) inflight.abort();
       inflight = new AbortController();
-      const res = await fetch(settings.apiBase.replace(/\/$/, '') + '/api/lookup-candidates', {
+      const res = await fetch(API_BASE + '/api/lookup-candidates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(signals),
         signal: inflight.signal
       });
-      if (!res.ok) throw new Error('API error ' + res.status);
+      if (!res.ok) throw new Error('API ' + res.status);
       const data = await res.json();
       renderCandidates(data.candidates || []);
     } catch (err) {
       if (err.name === 'AbortError') return;
-      setStatus('Couldn’t load doctor matches. You can still continue.', true);
-      actionsEl.style.display = 'block';
+      setStatus('Couldn\u2019t load matches. Check your connection and try again.', true);
+    } finally {
+      btn.disabled = false;
     }
   }
 
   function renderCandidates(list) {
     if (!list.length) {
-      setStatus('No matches found. Double-check the name, or continue without selecting.');
-      listEl.innerHTML = '<div class="none">We couldn’t find a match in the national registry.</div>';
-      actionsEl.style.display = 'block';
+      setStatus('No matches in the national registry. Double-check the spelling, or continue and we\u2019ll confirm manually.', true);
+      listEl.innerHTML = '<div class="none">Nothing found. You can still continue filling out the form.</div>';
       return;
     }
-    setStatus('Is this your doctor? Pick one below.');
+    setStatus('Is this your doctor? Click the match.');
     listEl.innerHTML = '';
-    list.forEach((c, i) => {
+    list.forEach((c) => {
       const card = document.createElement('div');
       card.className = 'card';
-      card.dataset.npi = c.npi;
       card.innerHTML = `
-        <img src="${c.photo_url}" alt="" loading="lazy" onerror="this.src='data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns=\\'http://www.w3.org/2000/svg\\' viewBox=\\'0 0 80 80\\'><rect width=\\'80\\' height=\\'80\\' fill=\\'#e5e7eb\\'/></svg>')}'">
+        <img src="${esc(c.photo_url)}" alt="" loading="lazy">
         <div class="info">
-          <div class="name">${escapeHtml(c.displayName)}</div>
-          <div class="sub">${escapeHtml(c.specialty || '')}${c.clinic ? ' · ' + escapeHtml(c.clinic) : ''}</div>
-          <div class="sub">${escapeHtml(c.address || '')}</div>
-          <div class="npi">NPI ${c.npi}</div>
+          <div class="name">${esc(c.displayName)}</div>
+          <div class="sub">${esc(c.specialty || '')}${c.clinic ? ' · ' + esc(c.clinic) : ''}</div>
+          <div class="sub">${esc(c.address || '')}</div>
+          <div class="npi-mini">NPI ${esc(c.npi)}</div>
         </div>
         <div class="pick">Select</div>
       `;
-      card.addEventListener('click', () => selectCandidate(c, card));
+      card.addEventListener('click', () => selectCandidate(c));
       listEl.appendChild(card);
     });
-    actionsEl.style.display = 'block';
   }
 
-  function escapeHtml(s) {
-    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function selectCandidate(c) {
+    listEl.innerHTML = '';
+    setStatus('');
+    selectedEl.style.display = 'block';
+    selectedEl.innerHTML = `
+      <h3>\u2713 Verified doctor</h3>
+      <div style="display:flex; gap:12px; align-items:center; margin-bottom:10px;">
+        <img src="${esc(c.photo_url)}" alt="" style="width:60px;height:60px;border-radius:50%;object-fit:cover;background:#e5e7eb;">
+        <div>
+          <div style="font-weight:700;font-size:15px;">${esc(c.displayName)}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(c.specialty || '')}</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 8px;">Copy these values into the fields below:</p>
+      <div class="field-line"><span class="lbl">Doctor's Full Name</span><span><span class="val">${esc(c.displayName)}</span><button type="button" class="copy" data-copy="${esc(c.displayName)}">Copy</button></span></div>
+      ${c.clinic ? `<div class="field-line"><span class="lbl">Clinic</span><span><span class="val">${esc(c.clinic)}</span><button type="button" class="copy" data-copy="${esc(c.clinic)}">Copy</button></span></div>` : ''}
+      ${c.phone ? `<div class="field-line"><span class="lbl">Phone</span><span><span class="val">${esc(c.phone)}</span><button type="button" class="copy" data-copy="${esc(c.phone)}">Copy</button></span></div>` : ''}
+      <div class="field-line"><span class="lbl">NPI</span><span><span class="val">${esc(c.npi)}</span><button type="button" class="copy" data-copy="${esc(c.npi)}">Copy</button></span></div>
+    `;
+    selectedEl.querySelectorAll('.copy').forEach(b => b.addEventListener('click', (e) => {
+      const val = e.currentTarget.getAttribute('data-copy');
+      navigator.clipboard.writeText(val).then(() => {
+        const orig = e.currentTarget.textContent;
+        e.currentTarget.textContent = 'Copied!';
+        setTimeout(() => { e.currentTarget.textContent = orig; }, 1200);
+      });
+    }));
+
+    // Best-effort: if JotForm's JFCustomWidget SDK happens to be available
+    // (it is for registered widgets; not for the generic Iframe Embed), push the value.
+    try {
+      if (window.JFCustomWidget && typeof window.JFCustomWidget.sendData === 'function') {
+        window.JFCustomWidget.sendData({
+          valid: true,
+          value: JSON.stringify({
+            npi: c.npi, displayName: c.displayName,
+            clinic: c.clinic, phone: c.phone, address: c.address
+          })
+        });
+      }
+    } catch (_) { /* no-op */ }
   }
 
-  function selectCandidate(c, cardEl) {
-    selected = c;
-    Array.from(listEl.querySelectorAll('.card')).forEach(el => el.classList.remove('selected'));
-    if (cardEl) cardEl.classList.add('selected');
-    // Immediately send value to JotForm so validation passes.
-    JFCustomWidget.sendData({
-      valid: true,
-      value: JSON.stringify({
-        npi: c.npi,
-        displayName: c.displayName,
-        clinic: c.clinic,
-        address: c.address,
-        phone: c.phone
-      })
-    });
-  }
-
-  JFCustomWidget.subscribe('ready', function (data) {
-    const w = JFCustomWidget.getWidgetSettings() || {};
-    settings = {
-      apiBase: w.apiBase || DEFAULTS.apiBase,
-      firstNameField: w.firstNameField || DEFAULTS.firstNameField,
-      lastNameField: w.lastNameField || DEFAULTS.lastNameField,
-      phoneField: w.phoneField || DEFAULTS.phoneField,
-      clinicField: w.clinicField || DEFAULTS.clinicField,
-      stateField: w.stateField || DEFAULTS.stateField
-    };
-    JFCustomWidget.fireEvent('resize', { height: 260 });
-  });
-
-  // Runs every time any field in the form changes — the SDK gives us all fields.
-  JFCustomWidget.subscribe('populate', function (_existing) {
-    // existing may contain a previously saved value (if editing a submission)
-  });
-
-  // The SDK calls 'change' with current form data on every field change.
-  JFCustomWidget.subscribe('change', function (data) {
-    const signals = readSignals(data);
-    const sig = signatureOf(signals);
-    if (sig === lastSignature) return;
-    lastSignature = sig;
-    clearTimeout(window.__mmDebounce);
-    window.__mmDebounce = setTimeout(() => doLookup(signals), 400);
-  });
-
-  JFCustomWidget.subscribe('submit', function () {
-    // If nothing selected, still let the form submit (validation is handled by parent fields).
-    JFCustomWidget.sendSubmit({
-      valid: true,
-      value: selected ? JSON.stringify({
-        npi: selected.npi,
-        displayName: selected.displayName,
-        clinic: selected.clinic,
-        address: selected.address,
-        phone: selected.phone
-      }) : ''
-    });
-  });
-
-  document.getElementById('none-btn').addEventListener('click', () => {
-    selected = null;
-    Array.from(listEl.querySelectorAll('.card')).forEach(el => el.classList.remove('selected'));
-    JFCustomWidget.sendData({ valid: true, value: '' });
-    setStatus('No doctor selected — you can continue and we’ll confirm later.');
+  btn.addEventListener('click', search);
+  ['firstName','lastName','phone','clinic','state'].forEach(id => {
+    $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
   });
 })();
 </script>
