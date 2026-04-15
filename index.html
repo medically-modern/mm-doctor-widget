@@ -239,8 +239,8 @@
       address: c.address || ''
     };
     console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
-    // Also call sendSubmit now as a belt-and-suspenders — some widget types only
-    // capture values set during an active sendSubmit call rather than the submit event.
+    // Belt-and-suspenders: also call sendSubmit in case this widget type does
+    // propagate values (most iframe-embed widgets don't, hence the stash fallback).
     try {
       if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
         JFCustomWidget.sendSubmit({ value: JSON.stringify(pendingDoctor), valid: true });
@@ -249,6 +249,17 @@
     } catch (e) {
       console.warn('[mm-doctor v2] sendSubmit (on-confirm) failed:', e.message);
     }
+    // Primary path: stash the doctor on the backend keyed by this browser's IP.
+    // The JotForm webhook handler will pick it up when the form is submitted.
+    fetch(API_BASE + '/api/intake/stash-doctor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doctor: pendingDoctor })
+    }).then(r => r.json()).then(j => {
+      console.log('[mm-doctor v2] stash-doctor response:', j);
+    }).catch(e => {
+      console.warn('[mm-doctor v2] stash-doctor failed:', e.message);
+    });
     b.textContent = '\u2713 Confirmed. Continue to submit\u2192';
     b.classList.add('saved');
   }
