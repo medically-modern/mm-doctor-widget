@@ -111,6 +111,28 @@
   // NPPES registry values (which are often a wrong generic number or an old clinic name).
   let typedSignals = { firstName: '', lastName: '', phone: '', clinic: '' };
 
+  // Patient identity from URL params passed by JotForm (pfn/pln/pph). This lets
+  // us build a deterministic join key so the webhook attaches the right doctor
+  // even if two patients share a public IP (CGNAT / shared wifi collision).
+  // Graceful fallback: if params are missing, keyHash stays null and we
+  // continue with the original IP-only join.
+  const urlParams = new URLSearchParams(window.location.search);
+  const patientIdentity = {
+    firstName: urlParams.get('pfn') || '',
+    lastName:  urlParams.get('pln') || '',
+    phone:     urlParams.get('pph') || ''
+  };
+  function computeKeyHash(lastName, phone) {
+    if (!lastName) return null;
+    const ln = String(lastName).toLowerCase().replace(/[^a-z]/g, '');
+    const digits = String(phone || '').replace(/\D/g, '');
+    const last4 = digits.slice(-4);
+    if (!ln || last4.length < 4) return null;
+    return `${ln}:${last4}`;
+  }
+  const patientKeyHash = computeKeyHash(patientIdentity.lastName, patientIdentity.phone);
+  console.log('[mm-doctor v2] patient keyHash?', patientKeyHash ? 'yes' : 'no (URL params missing)');
+
   // Normalize NPPES-style names like "TRAJKO BOJADZIEVSKI, MD" → "Trajko Bojadzievski".
   // Strips common post-nominals and title-cases the rest. Preserves apostrophes/hyphens.
   // Multi-char dashed credentials (NP-C, PA-C, FNP-BC) must come BEFORE their
@@ -268,20 +290,53 @@
     } catch (e) {
       console.warn('[mm-doctor v2] sendSubmit (on-confirm) failed:', e.message);
     }
-    // Primary path: stash the doctor on the backend keyed by this browser's IP.
-    // The JotForm webhook handler will pick it up when the form is submitted.
-    fetch(API_BASE + '/api/intake/stash-doctor', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doctor: pendingDoctor })
-    }).then(r => r.json()).then(j => {
-      console.log('[mm-doctor v2] stash-doctor response:', j);
-    }).catch(e => {
-      console.warn('[mm-doctor v2] stash-doctor failed:', e.message);
-    });
+    // Primary path: stash the doctor on the backend keyed by this browser's
+    // IP + patient keyHash. Retries on transient failure; on total failure the
+    // Confirm button flips to an actionable "tap to retry" state so the patient
+    // knows their doctor wasn't saved (prevents silent wifi-drop data loss).
+    stashDoctorWithRetry(pendingDoctor, b, c);
     b.textContent = '\u2713 Confirmed. Continue to submit\u2192';
     b.classList.add('saved');
   }
+  async function stashDoctorWithRetry(doctor, confirmBtn, originalCandidate) {
+    const payload = { doctor, keyHash: patientKeyHash };
+    const attempts = 3;
+    const delays = [0, 800, 2400]; // ms before each attempt
+    for (let i = 0; i < attempts; i++) {
+      if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(API_BASE + '/api/intake/stash-doctor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        }).finally(() => clearTimeout(timer));
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        console.log('[mm-doctor v2] stash-doctor ok on attempt', i + 1, j);
+        return;
+      } catch (e) {
+        console.warn('[mm-doctor v2] stash attempt', i + 1, 'failed:', e.message);
+      }
+    }
+    // All attempts failed — make it visible and actionable.
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '\u26A0 Couldn\u2019t save doctor \u2014 tap to retry';
+      confirmBtn.style.background = '#b45309';
+      confirmBtn.style.borderColor = '#b45309';
+      // Re-arm so the next click runs saveToMonday again from the start.
+      confirmBtn.onclick = () => {
+        confirmBtn.textContent = 'Saving…';
+        confirmBtn.style.background = '';
+        confirmBtn.style.borderColor = '';
+        saveToMonday(originalCandidate);
+      };
+    }
+  }
+
   btn.addEventListener('click', search);
   ['firstName','lastName','phone','clinic'].forEach(id => {
     $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
