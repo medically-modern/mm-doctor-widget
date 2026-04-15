@@ -199,18 +199,32 @@
   }
   // Hold the confirmed doctor payload so the JotForm 'submit' handler can forward it.
   let pendingDoctor = null;
+  const DIAG = '[mm-doctor v2]';
+  console.log(DIAG, 'script loaded; JFCustomWidget?', typeof window.JFCustomWidget);
 
-  // Subscribe once to the form's submit event so whatever the user selected gets
-  // written into the submission value for this widget's QID.
+  // Subscribe to every event we can so we can see what actually fires on submit.
   if (window.JFCustomWidget && typeof JFCustomWidget.subscribe === 'function') {
-    JFCustomWidget.subscribe('submit', function () {
+    ['ready','populate','submit'].forEach(evt => {
       try {
-        const value = pendingDoctor ? JSON.stringify(pendingDoctor) : '';
-        JFCustomWidget.sendSubmit({ value: value, valid: true });
-      } catch (_) {
-        try { JFCustomWidget.sendSubmit({ value: '', valid: true }); } catch (_) {}
+        JFCustomWidget.subscribe(evt, function (data) {
+          console.log(DIAG, 'event:', evt, 'pendingDoctor?', !!pendingDoctor);
+          if (evt === 'submit') {
+            try {
+              const value = pendingDoctor ? JSON.stringify(pendingDoctor) : '';
+              JFCustomWidget.sendSubmit({ value: value, valid: true });
+              console.log(DIAG, 'sendSubmit called with value length', value.length);
+            } catch (e) {
+              console.warn(DIAG, 'sendSubmit failed:', e.message);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn(DIAG, 'subscribe(' + evt + ') failed:', e.message);
       }
     });
+    try { JFCustomWidget.requestFrameResize({ height: 480 }); } catch(_) {}
+  } else {
+    console.warn(DIAG, 'JFCustomWidget SDK not available — iframe-embed widget may not propagate values');
   }
 
   function saveToMonday(c) {
@@ -224,6 +238,17 @@
       phone: c.phone || '',
       address: c.address || ''
     };
+    console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
+    // Also call sendSubmit now as a belt-and-suspenders — some widget types only
+    // capture values set during an active sendSubmit call rather than the submit event.
+    try {
+      if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
+        JFCustomWidget.sendSubmit({ value: JSON.stringify(pendingDoctor), valid: true });
+        console.log('[mm-doctor v2] sendSubmit (on-confirm) fired');
+      }
+    } catch (e) {
+      console.warn('[mm-doctor v2] sendSubmit (on-confirm) failed:', e.message);
+    }
     b.textContent = '\u2713 Confirmed. Continue to submit\u2192';
     b.classList.add('saved');
   }
