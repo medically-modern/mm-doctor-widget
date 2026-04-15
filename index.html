@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>MM Doctor Lookup</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -196,22 +197,29 @@
       searchUI.style.display = 'block';
     });
   }
-  async function saveToMonday(c) {
+  // Pack the doctor selection into the widget's form value via JFCustomWidget.sendSubmit.
+  // JotForm stores this string in the submission under this widget's QID, so our backend
+  // webhook can parse it and write the doctor columns to Monday in the same request as
+  // the patient fields.
+  function saveToMonday(c) {
     const b = selectedEl.querySelector('#confirm-btn');
-    b.disabled = true; b.textContent = 'Saving\u2026';
-    submissionId = submissionId || sid();
+    b.disabled = true;
+    const payload = {
+      npi: c.npi || '',
+      displayName: c.displayName || '',
+      specialty: c.specialty || '',
+      clinic: c.clinic || '',
+      phone: c.phone || '',
+      address: c.address || ''
+    };
     try {
-      const res = await fetch(API_BASE + '/api/save-doctor', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ submissionId, doctor: {
-          npi: c.npi, displayName: c.displayName, specialty: c.specialty,
-          clinic: c.clinic, phone: c.phone, address: c.address
-        }})
-      });
-      b.textContent = res.ok ? '\u2713 Saved. Continue\u2192' : '\u2713 Confirmed (save pending)';
+      if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
+        JFCustomWidget.sendSubmit({ value: JSON.stringify(payload), valid: true });
+      }
+      b.textContent = '\u2713 Confirmed. Continue to submit\u2192';
       b.classList.add('saved');
     } catch (_) {
-      b.textContent = '\u2713 Confirmed (save pending)';
+      b.textContent = '\u2713 Confirmed (pending)';
       b.classList.add('saved');
     }
   }
