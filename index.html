@@ -107,6 +107,21 @@
   const btn = $('search-btn');
   let inflight = null;
   let submissionId = null;
+  // Remember what the patient typed so we can prefer their phone/clinic over the
+  // NPPES registry values (which are often a wrong generic number or an old clinic name).
+  let typedSignals = { firstName: '', lastName: '', phone: '', clinic: '' };
+
+  // Normalize NPPES-style names like "TRAJKO BOJADZIEVSKI, MD" → "Trajko Bojadzievski".
+  // Strips common post-nominals and title-cases the rest. Preserves apostrophes/hyphens.
+  // Multi-char dashed credentials (NP-C, PA-C, FNP-BC) must come BEFORE their
+  // base forms in the alternation or "NP-C" gets stripped to "-C".
+  const CRED_RE = /,?\s*\b(NP-?C|PA-?C|FNP-?BC|AGNP-?C|WHNP-?BC|MD|DO|NP|PA|PHD|PH\.?D|RN|APRN|DDS|DMD|DPM|FACS|FAAP|FACP|MBBS|MSN|CRNP|CNM|DNP|OD|PT|OT|DC|LMFT|LCSW)\b\.?/gi;
+  function normalizeName(raw) {
+    if (!raw) return '';
+    let s = String(raw).replace(CRED_RE, '');
+    s = s.replace(/,+\s*$/,'').replace(/\s+/g,' ').trim();
+    return s.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (_, p, c) => p + c.toUpperCase());
+  }
 
   function sid() {
     return 'D' + Math.random().toString(36).slice(2, 7).toUpperCase()
@@ -131,6 +146,7 @@
     const s = readSignals();
     if (!s.firstName || !s.lastName) { setStatus('Enter first and last name.', true); return; }
     if (!s.clinic && !s.phone) { setStatus('Add clinic or phone.', true); return; }
+    typedSignals = s; // remember for saveToMonday
     listEl.innerHTML = '';
     setStatus('Searching national registry\u2026');
     btn.disabled = true;
@@ -163,7 +179,7 @@
       card.innerHTML = `
         <img src="${esc(c.photo_url)}" alt="" loading="lazy">
         <div class="info">
-          <div class="name">${esc(c.displayName)}</div>
+          <div class="name">${esc(normalizeName(c.displayName))}</div>
           <div class="sub">${esc(c.specialty || '')}</div>
           <div class="npi-mini">NPI ${esc(c.npi)}</div>
         </div>
@@ -181,7 +197,7 @@
         <div class="selected-head">
           <img src="${esc(c.photo_url)}" alt="">
           <div>
-            <div class="nm">${esc(c.displayName)}</div>
+            <div class="nm">${esc(normalizeName(c.displayName))}</div>
             <div class="sp">${esc(c.specialty || '')}</div>
             <div class="sp">NPI ${esc(c.npi)}</div>
           </div>
@@ -230,12 +246,15 @@
   function saveToMonday(c) {
     const b = selectedEl.querySelector('#confirm-btn');
     b.disabled = true;
+    // Monday should get what the PATIENT typed for phone/clinic — NPPES often
+    // returns an old generic main-line number or a stale clinic string. Registry
+    // values are fallbacks only if the patient left those fields blank.
     pendingDoctor = {
       npi: c.npi || '',
-      displayName: c.displayName || '',
+      displayName: normalizeName(c.displayName),
       specialty: c.specialty || '',
-      clinic: c.clinic || '',
-      phone: c.phone || '',
+      clinic: (typedSignals.clinic || c.clinic || '').trim(),
+      phone:  (typedSignals.phone  || c.phone  || '').trim(),
       address: c.address || ''
     };
     console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
