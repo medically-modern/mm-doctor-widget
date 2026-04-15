@@ -197,14 +197,26 @@
       searchUI.style.display = 'block';
     });
   }
-  // Pack the doctor selection into the widget's form value via JFCustomWidget.sendSubmit.
-  // JotForm stores this string in the submission under this widget's QID, so our backend
-  // webhook can parse it and write the doctor columns to Monday in the same request as
-  // the patient fields.
+  // Hold the confirmed doctor payload so the JotForm 'submit' handler can forward it.
+  let pendingDoctor = null;
+
+  // Subscribe once to the form's submit event so whatever the user selected gets
+  // written into the submission value for this widget's QID.
+  if (window.JFCustomWidget && typeof JFCustomWidget.subscribe === 'function') {
+    JFCustomWidget.subscribe('submit', function () {
+      try {
+        const value = pendingDoctor ? JSON.stringify(pendingDoctor) : '';
+        JFCustomWidget.sendSubmit({ value: value, valid: true });
+      } catch (_) {
+        try { JFCustomWidget.sendSubmit({ value: '', valid: true }); } catch (_) {}
+      }
+    });
+  }
+
   function saveToMonday(c) {
     const b = selectedEl.querySelector('#confirm-btn');
     b.disabled = true;
-    const payload = {
+    pendingDoctor = {
       npi: c.npi || '',
       displayName: c.displayName || '',
       specialty: c.specialty || '',
@@ -212,16 +224,8 @@
       phone: c.phone || '',
       address: c.address || ''
     };
-    try {
-      if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
-        JFCustomWidget.sendSubmit({ value: JSON.stringify(payload), valid: true });
-      }
-      b.textContent = '\u2713 Confirmed. Continue to submit\u2192';
-      b.classList.add('saved');
-    } catch (_) {
-      b.textContent = '\u2713 Confirmed (pending)';
-      b.classList.add('saved');
-    }
+    b.textContent = '\u2713 Confirmed. Continue to submit\u2192';
+    b.classList.add('saved');
   }
   btn.addEventListener('click', search);
   ['firstName','lastName','phone','clinic'].forEach(id => {
