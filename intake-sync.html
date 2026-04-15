@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MM Intake Sync</title>
+<script src="https://cdn.jotfor.ms/static/prototype.forms.js"></script>
+<script src="https://cdn.jotfor.ms/s/umd/latest/for-form-fields.js"></script>
+<style>
+  :root { color-scheme: light; }
+  html, body { margin: 0; padding: 0; font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #888; background: transparent; }
+  body { padding: 6px 10px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #ccc; flex: 0 0 auto; }
+  .dot.ok { background: #2c6e6a; }
+  .dot.err { background: #c0392b; }
+  .msg { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Hide completely when embedded — it's a sync-only widget, no user-facing UI needed. */
+  body.stealth .row { display: none; }
+</style>
+</head>
+<body class="stealth">
+  <div class="row"><div id="dot" class="dot"></div><div id="msg" class="msg">intake-sync idle</div></div>
+
+<script>
+(function(){
+  var BACKEND = 'https://mm-doctor-api-production.up.railway.app';
+  var SESSION_KEY = 'mm_intake_session_id';
+  var VERSION = 'v1';
+
+  var dot = document.getElementById('dot');
+  var msg = document.getElementById('msg');
+  function status(state, text){
+    dot.className = 'dot ' + (state || '');
+    msg.textContent = text || '';
+    try { console.log('[mm-intake-sync '+VERSION+']', state || '-', text || ''); } catch(e){}
+  }
+
+  // --- Session ID ---
+  function uuid() {
+    if (window.crypto && crypto.getRandomValues) {
+      var b = new Uint8Array(16); crypto.getRandomValues(b);
+      b[6]=(b[6]&0x0f)|0x40; b[8]=(b[8]&0x3f)|0x80;
+      var h = Array.from(b, function(x){ return ('0'+x.toString(16)).slice(-2); });
+      return h.slice(0,4).join('')+'-'+h.slice(4,6).join('')+'-'+h.slice(6,8).join('')+'-'+h.slice(8,10).join('')+'-'+h.slice(10,16).join('');
+    }
+    return 'sid-'+Math.random().toString(36).slice(2)+Date.now().toString(36);
+  }
+  var sessionId = null;
+  try { sessionId = localStorage.getItem(SESSION_KEY); } catch(e){}
+  if (!sessionId) { sessionId = uuid(); try { localStorage.setItem(SESSION_KEY, sessionId); } catch(e){} }
+
+  // --- QID → logical field name map (matches backend labelMap) ---
+  var QID_TO_FIELD = {
+    '32':  'firstName',
+    '33':  'lastName',
+    '93':  'dob',
+    '89':  'phone',
+    '36':  'email',
+    '121': 'products',           // checkbox array
+    '94':  'onInsulin',          // radio
+    '76':  'pumpType',           // radio
+    '46':  'insuranceProvider',  // radio
+    '47':  'planType',           // radio
+    '112': 'memberId'
+  };
+
+  function extractFieldsFromFormValues(formValues) {
+    // JotForm passes the form values in varying shapes depending on API version.
+    // Accept:
+    //   object keyed by qid ({ '32': 'Jane', '121': ['Dexcom CGM'], ... })
+    //   object keyed by field name (less common)
+    //   array of {id,name,value}
+    var out = {};
+    if (!formValues) return out;
+
+    function handle(qid, name, value){
+      var logical = QID_TO_FIELD[String(qid)];
+      if (!logical) return;
+      if (value == null || value === '') return;
+      if (logical === 'products') {
+        if (Array.isArray(value)) out.products = value.filter(Boolean);
+        else if (typeof value === 'string') out.products = [value];
+        return;
+      }
+      if (logical === 'phone' && typeof value === 'object') {
+        // JotForm phone arrives as {full, area, phone}
+        out.phone = value.full || ((value.area||'') + (value.phone||''));
+        return;
+      }
+      out[logical] = typeof value === 'string' ? value.trim() : value;
+    }
+
+    if (Array.isArray(formValues)) {
+      formValues.forEach(function(f){ handle(f.id || f.qid, f.name, f.value); });
+    } else if (typeof formValues === 'object') {
+      Object.keys(formValues).forEach(function(k){
+        var v = formValues[k];
+        // key could be qid (numeric string) or a wrapper {name, value}
+        if (v && typeof v === 'object' && ('value' in v || 'answer' in v)) {
+          handle(k, v.name, v.value != null ? v.value : v.answer);
+        } else {
+          handle(k, null, v);
+        }
+      });
+    }
+    return out;
+  }
+
+  var lastSent = {};
+  var inflight = false;
+
+  function diff(curr) {
+    var out = {};
+    Object.keys(curr).forEach(function(k){
+      var a = JSON.stringify(curr[k]);
+      var b = JSON.stringify(lastSent[k]);
+      if (a !== b) out[k] = curr[k];
+    });
+    return out;
+  }
+
+  function sync(formValues, reason) {
+    var fields = extractFieldsFromFormValues(formValues);
+    var d = diff(fields);
+    if (!Object.keys(d).length) { status('ok','noop ('+reason+')'); return; }
+    if (!lastSent.firstName && !d.firstName) { status('', 'waiting for firstName'); return; }
+
+    status('', 'syncing '+Object.keys(d).join(',')+' ('+reason+')');
+    inflight = true;
+    fetch(BACKEND + '/api/intake/upsert', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: sessionId, fields: d })
+    })
+    .then(function(r){ return r.json().then(function(j){ return {status:r.status, body:j}; }); })
+    .then(function(r){
+      inflight = false;
+      if (r.status >= 200 && r.status < 300) {
+        Object.assign(lastSent, d);
+        try { if (r.body && r.body.item_id) window.parent && (window.parent.__mm_item_id = r.body.item_id); } catch(e){}
+        status('ok', 'synced '+Object.keys(d).length+' fields → '+(r.body && r.body.item_id || '?'));
+      } else {
+        status('err', 'backend '+r.status+' '+(r.body && r.body.error || ''));
+      }
+    })
+    .catch(function(e){ inflight = false; status('err', 'fetch failed: '+e.message); });
+  }
+
+  // --- Subscribe to every event type we know about and log what fires ---
+  function wire() {
+    if (typeof JFCustomWidget === 'undefined') {
+      status('err', 'JFCustomWidget not available');
+      return;
+    }
+    status('', 'widget ready, subscribing...');
+
+    JFCustomWidget.subscribe('ready', function(data){
+      status('', 'ready event fired');
+      // Try to pull current form values immediately
+      try {
+        if (typeof JFCustomWidget.getFormValues === 'function') {
+          JFCustomWidget.getFormValues(function(vals){ sync(vals, 'ready'); });
+        }
+      } catch(e){ status('err', 'getFormValues failed: '+e.message); }
+    });
+
+    JFCustomWidget.subscribe('populate', function(data){
+      status('', 'populate event fired');
+    });
+
+    JFCustomWidget.subscribe('submit', function(data){
+      // Fires on page-advance in multi-page forms AND on final submit.
+      // JotForm sends form values in `data` or via getFormValues callback.
+      try {
+        if (typeof JFCustomWidget.getFormValues === 'function') {
+          JFCustomWidget.getFormValues(function(vals){ sync(vals, 'submit'); });
+        } else {
+          sync(data || {}, 'submit-data');
+        }
+      } catch(e){ status('err', 'submit handler: '+e.message); }
+      // Tell JotForm we're OK to proceed.
+      try { JFCustomWidget.sendSubmit({ value: 'synced@'+Date.now(), valid: true }); } catch(e){}
+    });
+
+    // Poll fallback: if submit events don't reach us, try reading form values every 5s.
+    setInterval(function(){
+      try {
+        if (typeof JFCustomWidget.getFormValues === 'function') {
+          JFCustomWidget.getFormValues(function(vals){ sync(vals, 'poll'); });
+        }
+      } catch(e){}
+    }, 5000);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
+</script>
+</body>
+</html>
