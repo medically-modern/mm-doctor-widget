@@ -69,17 +69,25 @@
   .change-link { display: block; text-align: center; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; width: 100%; padding: 0; }
   .change-link:hover { color: var(--text); }
   .not-mine {
-    margin-top: 10px; padding: 10px 12px;
-    background: #fff; border: 1px dashed var(--border);
-    border-radius: 8px; font-size: 12px; color: var(--muted);
-    line-height: 1.4; text-align: center;
+    margin-top: 12px; padding: 14px 16px;
+    background: #fff; border: 1.5px solid var(--brand);
+    border-radius: 10px; text-align: center;
+    box-shadow: 0 1px 4px rgba(44, 110, 106, 0.08);
+  }
+  .not-mine-head {
+    font-weight: 700; font-size: 14px; color: var(--text);
+    margin-bottom: 6px; letter-spacing: 0.1px;
+  }
+  .not-mine-body {
+    font-size: 12px; color: var(--muted); line-height: 1.45;
   }
   .not-mine-btn {
-    background: none; border: none; color: var(--brand); cursor: pointer;
+    background: var(--brand); border: none; color: #fff; cursor: pointer;
     font-family: inherit; font-size: 12px; font-weight: 600;
-    text-decoration: underline; padding: 0;
+    padding: 5px 10px; border-radius: 5px;
+    transition: background 0.15s ease-in-out;
   }
-  .not-mine-btn:hover { color: var(--text); }
+  .not-mine-btn:hover { background: #245a57; }
   .typed-head {
     display: flex; gap: 16px; align-items: center; margin-bottom: 14px;
   }
@@ -233,13 +241,15 @@
             ${subs.map(s => `<div class="sp">${s}</div>`).join('')}
           </div>
         </div>
-        <button type="button" class="confirm-btn" id="confirm-btn">I confirmed doctor above</button>
+        <button type="button" class="confirm-btn" id="confirm-btn">This is my doctor!</button>
         <button type="button" class="change-link" id="change-btn">\u2190 edit search</button>
       </div>
       <div class="not-mine">
-        Not your doctor? Not a problem!
-        <button type="button" class="not-mine-btn" id="not-mine-btn">Click here</button>
-        and then press &ldquo;I confirmed doctor above.&rdquo;
+        <div class="not-mine-head">Not your doctor?</div>
+        <div class="not-mine-body">
+          <button type="button" class="not-mine-btn" id="not-mine-btn">Click here</button>
+          and then press &ldquo;This is my doctor!&rdquo; above.
+        </div>
       </div>
     `;
     selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmMatch(c));
@@ -264,7 +274,7 @@
             <div class="sp">NPI will be left blank on the prescription.</div>
           </div>
         </div>
-        <button type="button" class="confirm-btn" id="confirm-btn">I confirmed doctor above</button>
+        <button type="button" class="confirm-btn" id="confirm-btn">This is my doctor!</button>
         <button type="button" class="change-link" id="change-btn">\u2190 edit search</button>
       </div>
     `;
