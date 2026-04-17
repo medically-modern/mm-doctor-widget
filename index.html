@@ -204,11 +204,14 @@
     list.forEach((c) => {
       const card = document.createElement('div');
       card.className = 'card';
+      const nameLine = esc(normalizeName(c.displayName)) + (c.credential ? `, ${esc(c.credential)}` : '');
+      const place = esc(c.clinic || c.address || '');
       card.innerHTML = `
         <img src="${esc(c.photo_url)}" alt="" loading="lazy">
         <div class="info">
-          <div class="name">${esc(normalizeName(c.displayName))}</div>
+          <div class="name">${nameLine}</div>
           <div class="sub">${esc(c.specialty || '')}</div>
+          ${place ? `<div class="sub">${place}</div>` : ''}
           <div class="npi-mini">NPI ${esc(c.npi)}</div>
         </div>
         <div class="pick">\u203a</div>
@@ -220,13 +223,16 @@
   function selectCandidate(c) {
     searchUI.style.display = 'none';
     selectedEl.style.display = 'block';
+    const selNameLine = esc(normalizeName(c.displayName)) + (c.credential ? `, ${esc(c.credential)}` : '');
     selectedEl.innerHTML = `
       <div class="selected-card">
         <div class="selected-head">
           <img src="${esc(c.photo_url)}" alt="">
           <div>
-            <div class="nm">${esc(normalizeName(c.displayName))}</div>
+            <div class="nm">${selNameLine}</div>
             <div class="sp">${esc(c.specialty || '')}</div>
+            ${c.clinic ? `<div class="sp">${esc(c.clinic)}</div>` : ''}
+            ${c.address ? `<div class="sp">${esc(c.address)}</div>` : ''}
             <div class="sp">NPI ${esc(c.npi)}</div>
           </div>
         </div>
