@@ -45,18 +45,6 @@
   .status { font-size: 12px; color: var(--muted); padding: 8px 0 0; min-height: 16px; text-align: center; }
   .status.err { color: #b91c1c; }
   .list { display: grid; gap: 6px; margin-top: 10px; }
-  .card {
-    display: grid; grid-template-columns: 44px 1fr auto; gap: 10px;
-    padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
-    background: #fff; cursor: pointer; align-items: center;
-  }
-  .card:hover { border-color: var(--brand); background: var(--bg-soft); }
-  .card img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #e5e7eb; }
-  .info { min-width: 0; }
-  .name { font-weight: 600; font-size: 13px; line-height: 1.2; overflow-wrap: break-word; word-break: break-word; }
-  .sub { font-size: 11px; color: var(--muted); margin-top: 1px; line-height: 1.25; overflow-wrap: break-word; word-break: break-word; }
-  .npi-mini { font-size: 10px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
-  .pick { font-size: 18px; color: var(--brand); font-weight: 700; }
   .selected-card {
     margin-top: 12px; padding: 18px 16px; border: 2px solid var(--ok);
     background: var(--ok-bg); border-radius: 10px;
@@ -80,7 +68,28 @@
   .confirm-btn.saved { background: #065f46; }
   .change-link { display: block; text-align: center; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; width: 100%; padding: 0; }
   .change-link:hover { color: var(--text); }
-  .none { padding: 10px; border: 1px dashed var(--border); border-radius: 8px; color: var(--muted); font-size: 12px; text-align: center; }
+  .not-mine {
+    margin-top: 10px; padding: 10px 12px;
+    background: #fff; border: 1px dashed var(--border);
+    border-radius: 8px; font-size: 12px; color: var(--muted);
+    line-height: 1.4; text-align: center;
+  }
+  .not-mine-btn {
+    background: none; border: none; color: var(--brand); cursor: pointer;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    text-decoration: underline; padding: 0;
+  }
+  .not-mine-btn:hover { color: var(--text); }
+  .typed-head {
+    display: flex; gap: 16px; align-items: center; margin-bottom: 14px;
+  }
+  .typed-head .avatar {
+    width: 88px; height: 88px; border-radius: 50%;
+    background: #e5e7eb; display: flex; align-items: center; justify-content: center;
+    color: #9ca3af; font-size: 34px; font-weight: 700; flex-shrink: 0;
+    border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    font-family: 'Poppins', sans-serif;
+  }
 </style>
 </head>
 <body>
@@ -96,25 +105,23 @@
 
     <button class="btn" id="search-btn" type="button">Search</button>
     <div id="status" class="status"></div>
-
-    <div id="list" class="list" aria-live="polite"></div>
   </div>
-  <div id="selected" style="display:none;"></div>
+  <div id="selected" style="display:none;" aria-live="polite"></div>
 </div>
 
 <script>
 (function () {
   const API_BASE = 'https://mm-doctor-api-production.up.railway.app';
   const $ = (id) => document.getElementById(id);
-  const listEl = $('list');
   const statusEl = $('status');
   const selectedEl = $('selected');
   const searchUI = $('search-ui');
   const btn = $('search-btn');
   let inflight = null;
   let submissionId = null;
-  // Remember what the patient typed so we can prefer their phone/clinic over the
-  // NPPES registry values (which are often a wrong generic number or an old clinic name).
+  // Remember what the patient typed so we can present a "Not your doctor?"
+  // escape that uses their inputs verbatim (simple First Last name, phone
+  // and clinic already live in separate JotForm fields).
   let typedSignals = { firstName: '', lastName: '', phone: '', clinic: '' };
 
   // Patient identity from URL params passed by JotForm (pfn/pln/pph). This lets
@@ -139,16 +146,18 @@
   const patientKeyHash = computeKeyHash(patientIdentity.lastName, patientIdentity.phone);
   console.log('[mm-doctor v2] patient keyHash?', patientKeyHash ? 'yes' : 'no (URL params missing)');
 
-  // Normalize NPPES-style names like "TRAJKO BOJADZIEVSKI, MD" → "Trajko Bojadzievski".
-  // Strips common post-nominals and title-cases the rest. Preserves apostrophes/hyphens.
-  // Multi-char dashed credentials (NP-C, PA-C, FNP-BC) must come BEFORE their
-  // base forms in the alternation or "NP-C" gets stripped to "-C".
-  const CRED_RE = /,?\s*\b(NP-?C|PA-?C|FNP-?BC|AGNP-?C|WHNP-?BC|MD|DO|NP|PA|PHD|PH\.?D|RN|APRN|DDS|DMD|DPM|FACS|FAAP|FACP|MBBS|MSN|CRNP|CNM|DNP|OD|PT|OT|DC|LMFT|LCSW)\b\.?/gi;
-  function normalizeName(raw) {
-    if (!raw) return '';
-    let s = String(raw).replace(CRED_RE, '');
-    s = s.replace(/,+\s*$/,'').replace(/\s+/g,' ').trim();
-    return s.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (_, p, c) => p + c.toUpperCase());
+  // Backend already returns a simple "First Last, CRED" displayName (see
+  // toSimpleDisplayName in lookup.js). This widget-side helper is only used
+  // to build the patient-typed fallback name when the patient says
+  // "Not your doctor?" — same rules: drop middle names from firstName,
+  // keep hyphenated last names, no credential (patient doesn't type one).
+  function simplePatientName(firstName, lastName) {
+    const tc = (s) => String(s || '')
+      .toLowerCase()
+      .replace(/(^|[\s\-'])([a-z])/g, (_, p, c) => p + c.toUpperCase());
+    const first = tc(firstName).split(/\s+/)[0] || '';
+    const last = tc(lastName).replace(/\s*-\s*/g, '-').trim();
+    return [first, last].filter(Boolean).join(' ');
   }
 
   function sid() {
@@ -174,8 +183,7 @@
     const s = readSignals();
     if (!s.firstName || !s.lastName) { setStatus('Enter first and last name.', true); return; }
     if (!s.clinic && !s.phone) { setStatus('Add clinic or phone.', true); return; }
-    typedSignals = s; // remember for saveToMonday
-    listEl.innerHTML = '';
+    typedSignals = s; // remember for the "Not your doctor?" escape
     setStatus('Searching national registry\u2026');
     btn.disabled = true;
     try {
@@ -187,72 +195,88 @@
       });
       if (!res.ok) throw new Error('API ' + res.status);
       const data = await res.json();
-      renderCandidates(data.candidates || []);
+      renderResult((data.candidates || [])[0] || null);
     } catch (err) {
       if (err.name === 'AbortError') return;
       setStatus('Couldn\u2019t load. Try again.', true);
     } finally { btn.disabled = false; }
   }
-  function renderCandidates(list) {
-    if (!list.length) {
-      setStatus('No matches. Check spelling or add more info.', true);
-      listEl.innerHTML = '<div class="none">Nothing found in the registry.</div>';
-      return;
-    }
-    setStatus('Tap your doctor to confirm.');
-    listEl.innerHTML = '';
-    list.forEach((c) => {
-      const card = document.createElement('div');
-      card.className = 'card';
-      const nameLine = esc(normalizeName(c.displayName)) + (c.credential ? `, ${esc(c.credential)}` : '');
-      const clinicLine = c.clinic ? `<div class="sub">${esc(c.clinic)}</div>` : '';
-      // Only show address on the list card when clinic is missing OR clinic doesn't
-      // already encode the address. Keeps short cards short but still shows both
-      // on affiliation+address sites like NYU Langone.
-      const addressLine = c.address && (!c.clinic || !c.clinic.includes(c.address))
-        ? `<div class="sub">${esc(c.address)}</div>`
-        : '';
-      card.innerHTML = `
-        <img src="${esc(c.photo_url)}" alt="" loading="lazy">
-        <div class="info">
-          <div class="name">${nameLine}</div>
-          <div class="sub">${esc(c.specialty || '')}</div>
-          ${clinicLine}
-          ${addressLine}
-          <div class="npi-mini">NPI ${esc(c.npi)}</div>
-        </div>
-        <div class="pick">\u203a</div>
-      `;
-      card.addEventListener('click', () => selectCandidate(c));
-      listEl.appendChild(card);
-    });
-  }
-  function selectCandidate(c) {
+
+  // Single-candidate render. If c is null (backend returned 0 candidates)
+  // we jump straight to the "not-my-doctor" card using patient-typed info
+  // so they can still move on.
+  function renderResult(c) {
     searchUI.style.display = 'none';
     selectedEl.style.display = 'block';
-    const selNameLine = esc(normalizeName(c.displayName)) + (c.credential ? `, ${esc(c.credential)}` : '');
+    if (!c) {
+      renderNotMine({ reason: 'no_match' });
+      return;
+    }
+    renderMatch(c);
+  }
+
+  // Render the single doctor-match card with Confirm + "Not your doctor?"
+  // escape. displayName comes back already simplified from the backend
+  // (e.g. "Mary Gallagher" / "Emily Silverman-Okeke, MD").
+  function renderMatch(c) {
+    const subs = [];
+    if (c.specialty) subs.push(esc(c.specialty));
+    if (c.clinic)    subs.push(esc(c.clinic));
+    if (c.address && (!c.clinic || !c.clinic.includes(c.address))) subs.push(esc(c.address));
+    if (c.npi)       subs.push('NPI ' + esc(c.npi));
     selectedEl.innerHTML = `
       <div class="selected-card">
         <div class="selected-head">
           <img src="${esc(c.photo_url)}" alt="">
           <div>
-            <div class="nm">${selNameLine}</div>
-            <div class="sp">${esc(c.specialty || '')}</div>
-            ${c.clinic ? `<div class="sp">${esc(c.clinic)}</div>` : ''}
-            ${c.address ? `<div class="sp">${esc(c.address)}</div>` : ''}
-            <div class="sp">NPI ${esc(c.npi)}</div>
+            <div class="nm">${esc(c.displayName || '')}</div>
+            ${subs.map(s => `<div class="sp">${s}</div>`).join('')}
           </div>
         </div>
-        <button type="button" class="confirm-btn" id="confirm-btn">Confirm this doctor</button>
-        <button type="button" class="change-link" id="change-btn">\u2190 pick a different one</button>
+        <button type="button" class="confirm-btn" id="confirm-btn">I confirmed doctor above</button>
+        <button type="button" class="change-link" id="change-btn">\u2190 edit search</button>
+      </div>
+      <div class="not-mine">
+        Not your doctor? Not a problem!
+        <button type="button" class="not-mine-btn" id="not-mine-btn">Click here</button>
+        and then press &ldquo;I confirmed doctor above.&rdquo;
       </div>
     `;
-    selectedEl.querySelector('#confirm-btn').addEventListener('click', () => saveToMonday(c));
-    selectedEl.querySelector('#change-btn').addEventListener('click', () => {
-      selectedEl.style.display = 'none';
-      selectedEl.innerHTML = '';
-      searchUI.style.display = 'block';
-    });
+    selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmMatch(c));
+    selectedEl.querySelector('#change-btn').addEventListener('click', backToSearch);
+    selectedEl.querySelector('#not-mine-btn').addEventListener('click', () => renderNotMine({ reason: 'patient_rejected' }));
+  }
+
+  // Render the "use what the patient typed" card. Shown either when the
+  // backend returns 0 candidates or the patient clicks "Not your doctor?".
+  // Stashes { notMyDoctor: true, displayName: simplePatientName(...), npi: '' }
+  // so the prescription PDF is generated with a blank NPI and the patient-typed name.
+  function renderNotMine(_ctx) {
+    const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
+    const initial = (typedName[0] || '?').toUpperCase();
+    selectedEl.innerHTML = `
+      <div class="selected-card">
+        <div class="typed-head">
+          <div class="avatar">${esc(initial)}</div>
+          <div>
+            <div class="nm">${esc(typedName || 'Your doctor')}</div>
+            <div class="sp">We&rsquo;ll use the doctor info you entered above.</div>
+            <div class="sp">NPI will be left blank on the prescription.</div>
+          </div>
+        </div>
+        <button type="button" class="confirm-btn" id="confirm-btn">I confirmed doctor above</button>
+        <button type="button" class="change-link" id="change-btn">\u2190 edit search</button>
+      </div>
+    `;
+    selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmNotMine(typedName));
+    selectedEl.querySelector('#change-btn').addEventListener('click', backToSearch);
+  }
+
+  function backToSearch() {
+    selectedEl.style.display = 'none';
+    selectedEl.innerHTML = '';
+    searchUI.style.display = 'block';
+    setStatus('');
   }
   // Hold the confirmed doctor payload so the JotForm 'submit' handler can forward it.
   let pendingDoctor = null;
@@ -284,19 +308,37 @@
     console.warn(DIAG, 'JFCustomWidget SDK not available — iframe-embed widget may not propagate values');
   }
 
-  function saveToMonday(c) {
-    const b = selectedEl.querySelector('#confirm-btn');
-    b.disabled = true;
-    // NPPES is ONLY for NPI + specialty. Per the new rule we do not send
-    // clinic/phone from the widget — the patient's own form fields (filled
-    // earlier in the flow) carry their typed clinic/phone to Monday on their
-    // own path. Address comes from the scraped page (empty if page has none).
-    pendingDoctor = {
+  // Confirm the matched doctor. displayName comes in pre-simplified from the
+  // backend ("Mary Gallagher" / "Emily Silverman-Okeke, MD"); we pass it
+  // straight through. Address is page-scraped (may be empty — that's fine).
+  function confirmMatch(c) {
+    const doctor = {
       npi: c.npi || '',
-      displayName: normalizeName(c.displayName),
+      displayName: c.displayName || '',
       specialty: c.specialty || '',
       address: c.address || ''
     };
+    finishConfirm(doctor, c);
+  }
+
+  // Confirm the "Not your doctor" escape. Uses the patient-typed simple name
+  // and leaves NPI blank so the prescription PDF renders an empty NPI line.
+  // No specialty/address — patient didn't supply those in a way we can trust.
+  function confirmNotMine(typedName) {
+    const doctor = {
+      notMyDoctor: true,
+      npi: '',
+      displayName: typedName || '',
+      specialty: '',
+      address: ''
+    };
+    finishConfirm(doctor, null);
+  }
+
+  function finishConfirm(doctor, originalCandidate) {
+    const b = selectedEl.querySelector('#confirm-btn');
+    b.disabled = true;
+    pendingDoctor = doctor;
     console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
     // Belt-and-suspenders: also call sendSubmit in case this widget type does
     // propagate values (most iframe-embed widgets don't, hence the stash fallback).
@@ -312,7 +354,7 @@
     // IP + patient keyHash. Retries on transient failure; on total failure the
     // Confirm button flips to an actionable "tap to retry" state so the patient
     // knows their doctor wasn't saved (prevents silent wifi-drop data loss).
-    stashDoctorWithRetry(pendingDoctor, b, c);
+    stashDoctorWithRetry(pendingDoctor, b, originalCandidate);
     b.textContent = '\u2713 Confirmed. Check the box below \u2193';
     b.classList.add('saved');
   }
@@ -345,12 +387,18 @@
       confirmBtn.textContent = '\u26A0 Couldn\u2019t save doctor \u2014 tap to retry';
       confirmBtn.style.background = '#b45309';
       confirmBtn.style.borderColor = '#b45309';
-      // Re-arm so the next click runs saveToMonday again from the start.
+      // Re-arm so the next click retries. If we had a match candidate we
+      // re-run confirmMatch with it; otherwise we're in the not-my-doctor
+      // branch and retry with the patient-typed name.
       confirmBtn.onclick = () => {
         confirmBtn.textContent = 'Saving…';
         confirmBtn.style.background = '';
         confirmBtn.style.borderColor = '';
-        saveToMonday(originalCandidate);
+        if (originalCandidate) {
+          confirmMatch(originalCandidate);
+        } else {
+          confirmNotMine(simplePatientName(typedSignals.firstName, typedSignals.lastName));
+        }
       };
     }
   }
