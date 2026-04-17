@@ -225,12 +225,15 @@
 
   // Render the single doctor-match card with Confirm + "Not your doctor?"
   // escape. displayName comes back already simplified from the backend
-  // (e.g. "Mary Gallagher" / "Emily Silverman-Okeke, MD").
+  // (e.g. "Mary Gallagher" / "Emily Silverman-Okeke, MD"). Clinic falls
+  // back to the patient-typed value when the page scrape didn't surface
+  // one (common for aggregator-only providers whose enrichment pages 403).
   function renderMatch(c) {
+    const shownClinic = c.clinic || typedSignals.clinic || '';
     const subs = [];
     if (c.specialty) subs.push(esc(c.specialty));
-    if (c.clinic)    subs.push(esc(c.clinic));
-    if (c.address && (!c.clinic || !c.clinic.includes(c.address))) subs.push(esc(c.address));
+    if (shownClinic) subs.push(esc(shownClinic));
+    if (c.address && (!shownClinic || !shownClinic.includes(c.address))) subs.push(esc(c.address));
     if (c.npi)       subs.push('NPI ' + esc(c.npi));
     selectedEl.innerHTML = `
       <div class="selected-card">
@@ -264,12 +267,14 @@
   function renderNotMine(_ctx) {
     const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
     const initial = (typedName[0] || '?').toUpperCase();
+    const typedClinic = typedSignals.clinic || '';
     selectedEl.innerHTML = `
       <div class="selected-card">
         <div class="typed-head">
           <div class="avatar">${esc(initial)}</div>
           <div>
             <div class="nm">${esc(typedName || 'Your doctor')}</div>
+            ${typedClinic ? `<div class="sp">${esc(typedClinic)}</div>` : ''}
             <div class="sp">We&rsquo;ll use the doctor info you entered above.</div>
             <div class="sp">NPI will be left blank on the prescription.</div>
           </div>
@@ -321,26 +326,31 @@
   // Confirm the matched doctor. displayName comes in pre-simplified from the
   // backend ("Mary Gallagher" / "Emily Silverman-Okeke, MD"); we pass it
   // straight through. Address is page-scraped (may be empty — that's fine).
+  // Clinic prefers the scraped value but falls back to patient-typed when
+  // page scrape failed (aggregator sites block our fetch → no clinic).
   function confirmMatch(c) {
     const doctor = {
       npi: c.npi || '',
       displayName: c.displayName || '',
       specialty: c.specialty || '',
-      address: c.address || ''
+      address: c.address || '',
+      clinic: c.clinic || typedSignals.clinic || ''
     };
     finishConfirm(doctor, c);
   }
 
   // Confirm the "Not your doctor" escape. Uses the patient-typed simple name
   // and leaves NPI blank so the prescription PDF renders an empty NPI line.
-  // No specialty/address — patient didn't supply those in a way we can trust.
+  // Clinic uses the patient-typed value (we never did a successful scrape
+  // for this path); specialty/address stay blank.
   function confirmNotMine(typedName) {
     const doctor = {
       notMyDoctor: true,
       npi: '',
       displayName: typedName || '',
       specialty: '',
-      address: ''
+      address: '',
+      clinic: typedSignals.clinic || ''
     };
     finishConfirm(doctor, null);
   }
