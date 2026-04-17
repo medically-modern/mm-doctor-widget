@@ -205,13 +205,20 @@
       const card = document.createElement('div');
       card.className = 'card';
       const nameLine = esc(normalizeName(c.displayName)) + (c.credential ? `, ${esc(c.credential)}` : '');
-      const place = esc(c.clinic || c.address || '');
+      const clinicLine = c.clinic ? `<div class="sub">${esc(c.clinic)}</div>` : '';
+      // Only show address on the list card when clinic is missing OR clinic doesn't
+      // already encode the address. Keeps short cards short but still shows both
+      // on affiliation+address sites like NYU Langone.
+      const addressLine = c.address && (!c.clinic || !c.clinic.includes(c.address))
+        ? `<div class="sub">${esc(c.address)}</div>`
+        : '';
       card.innerHTML = `
         <img src="${esc(c.photo_url)}" alt="" loading="lazy">
         <div class="info">
           <div class="name">${nameLine}</div>
           <div class="sub">${esc(c.specialty || '')}</div>
-          ${place ? `<div class="sub">${place}</div>` : ''}
+          ${clinicLine}
+          ${addressLine}
           <div class="npi-mini">NPI ${esc(c.npi)}</div>
         </div>
         <div class="pick">\u203a</div>
