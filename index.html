@@ -287,15 +287,14 @@
   function saveToMonday(c) {
     const b = selectedEl.querySelector('#confirm-btn');
     b.disabled = true;
-    // Monday should get what the PATIENT typed for phone/clinic — NPPES often
-    // returns an old generic main-line number or a stale clinic string. Registry
-    // values are fallbacks only if the patient left those fields blank.
+    // NPPES is ONLY for NPI + specialty. Per the new rule we do not send
+    // clinic/phone from the widget — the patient's own form fields (filled
+    // earlier in the flow) carry their typed clinic/phone to Monday on their
+    // own path. Address comes from the scraped page (empty if page has none).
     pendingDoctor = {
       npi: c.npi || '',
       displayName: normalizeName(c.displayName),
       specialty: c.specialty || '',
-      clinic: (typedSignals.clinic || c.clinic || '').trim(),
-      phone:  (typedSignals.phone  || c.phone  || '').trim(),
       address: c.address || ''
     };
     console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
