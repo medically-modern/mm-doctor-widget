@@ -108,14 +108,14 @@
 <div class="wrap">
   <div id="search-ui">
     <h2>Find your doctor</h2>
-    <p class="help">Enter your doctor's name <strong>and</strong> either the clinic or phone — we need a second detail to match the right provider.</p>
+    <p class="help">If you need to skip any fields we understand, but the more we have the easier it is to find them in our database.</p>
 
     <div class="field"><label>First name *</label><input type="text" id="firstName" autocomplete="off"></div>
     <div class="field"><label>Last name *</label><input type="text" id="lastName" autocomplete="off"></div>
     <div class="field"><label>Clinic</label><input type="text" id="clinic" autocomplete="off" placeholder="e.g. Acme Medical"></div>
     <div class="field"><label>Phone</label><input type="tel" id="phone" autocomplete="off" placeholder="(555) 123-4567"></div>
 
-    <button class="btn" id="search-btn" type="button">Search</button>
+    <button class="btn" id="search-btn" type="button">Search Medically Modern Database</button>
     <div id="status" class="status"></div>
   </div>
   <div id="selected" style="display:none;" aria-live="polite"></div>
@@ -194,7 +194,6 @@
   async function search() {
     const s = readSignals();
     if (!s.firstName || !s.lastName) { setStatus('Enter first and last name.', true); return; }
-    if (!s.clinic && !s.phone) { setStatus('Add clinic or phone.', true); return; }
     typedSignals = s; // remember for the "Not your doctor?" escape
     setStatus('Searching national registry\u2026');
     btn.disabled = true;
