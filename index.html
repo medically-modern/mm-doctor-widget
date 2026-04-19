@@ -102,12 +102,69 @@
     border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.10);
     font-family: 'Poppins', sans-serif;
   }
+  /* Main header (moved from JotForm Q71 so widget can hide it on results) */
+  #main-header {
+    text-align: center;
+    padding: 8px 8px 4px;
+    margin: 0 auto 10px;
+    max-width: 540px;
+  }
+  #main-header.hidden { display: none; }
+  .doc-title {
+    font-size: 24px; font-weight: 700; color: #2c6e6a;
+    margin: 0 0 10px; line-height: 1.2;
+  }
+  .doc-tagline {
+    font-size: 14px; color: #56666b; margin: 0 0 14px;
+    line-height: 1.5; padding: 0 8px;
+  }
+  .verify-pill-wrap {
+    text-align: center; margin: 0 0 14px;
+  }
+  .verify-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #f0f9f8; border: 1px solid #d4edec;
+    border-radius: 999px; padding: 6px 14px;
+    font-size: 12px; color: #2c6e6a;
+  }
+  .verify-dot {
+    display: inline-block; width: 14px; height: 14px;
+    border-radius: 50%; background: #14a38e; position: relative;
+  }
+  .verify-dot svg { position: absolute; top: 2px; left: 2px; }
+  /* Single-line variant of .not-mine used for the new edit-search / send-later buttons */
+  .not-mine.single {
+    font-weight: 600; font-size: 14px;
+    color: var(--text); letter-spacing: 0.1px;
+  }
+  .not-mine.send-later-confirmed {
+    background: var(--ok-bg);
+    border-color: var(--ok);
+    color: var(--ok);
+    cursor: default;
+    box-shadow: none;
+  }
+  .not-mine.send-later-confirmed:hover {
+    background: var(--ok-bg);
+    box-shadow: none;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
+  <div id="main-header">
+    <h1 class="doc-title">Who's your doctor?</h1>
+    <p class="doc-tagline">We'll get your supplies covered - just need a prescription from your provider.</p>
+  </div>
+  <div class="verify-pill-wrap">
+    <div class="verify-pill">
+      <span class="verify-dot" aria-hidden="true">
+        <svg viewBox="0 0 10 10" width="10" height="10"><circle cx="5" cy="4" r="1.8" fill="#fff"/><path d="M2 9 Q5 6 8 9" stroke="#fff" stroke-width="1.2" fill="none"/></svg>
+      </span>
+      Verified from the national provider database
+    </div>
+  </div>
   <div id="search-ui">
-    <h2>Find your doctor</h2>
     <p class="help">If you need to skip any fields we understand, but the more we have the easier it is to find them in our database.</p>
 
     <div class="field"><label>First name *</label><input type="text" id="firstName" autocomplete="off"></div>
@@ -128,7 +185,12 @@
   const statusEl = $('status');
   const selectedEl = $('selected');
   const searchUI = $('search-ui');
+  const mainHeader = $('main-header');
   const btn = $('search-btn');
+  // Toggle the big "Who's your doctor?" + tagline heading. Kept visible on
+  // the search view, hidden once a doctor card renders (verify pill stays).
+  function hideMainHeader() { if (mainHeader) mainHeader.classList.add('hidden'); }
+  function showMainHeader() { if (mainHeader) mainHeader.classList.remove('hidden'); }
   let inflight = null;
   let submissionId = null;
   // Remember what the patient typed so we can present a "Not your doctor?"
@@ -217,6 +279,7 @@
   // we jump straight to the "not-my-doctor" card using patient-typed info
   // so they can still move on.
   function renderResult(c) {
+    hideMainHeader();
     searchUI.style.display = 'none';
     selectedEl.style.display = 'block';
     if (!c) {
@@ -226,11 +289,15 @@
     renderMatch(c);
   }
 
-  // Render the single doctor-match card with Confirm + "Not your doctor?"
-  // escape. displayName comes back already simplified from the backend
-  // (e.g. "Mary Gallagher" / "Emily Silverman-Okeke, MD"). Clinic falls
-  // back to the patient-typed value when the page scrape didn't surface
-  // one (common for aggregator-only providers whose enrichment pages 403).
+  // Render the single doctor-match card with three equal-weight actions:
+  //   1) "This is my doctor!" — green primary, confirms the match
+  //   2) "Not my doctor, edit search" — outlined, back to search form
+  //   3) "Not my doctor, I'll send later" — outlined, flips text to
+  //      "No worries! Press next." and stashes a sendLater sentinel so the
+  //      patient can advance through the JotForm without confirming a provider.
+  // displayName comes back pre-simplified from the backend
+  // (e.g. "Mary Gallagher" / "Emily Silverman-Okeke, MD"). Clinic falls back
+  // to patient-typed when page scrape didn't surface one.
   function renderMatch(c) {
     const shownClinic = c.clinic || typedSignals.clinic || '';
     const subs = [];
@@ -248,16 +315,13 @@
           </div>
         </div>
         <button type="button" class="confirm-btn" id="confirm-btn">This is my doctor!</button>
-        <button type="button" class="change-link" id="change-btn">\u2190 edit search</button>
       </div>
-      <button type="button" class="not-mine" id="not-mine-btn">
-        <span class="not-mine-head">Not your doctor?</span>
-        <span class="not-mine-body">Press &ldquo;I confirmed my doctor above&rdquo; below.</span>
-      </button>
+      <button type="button" class="not-mine single" id="edit-search-btn">Not my doctor, edit search</button>
+      <button type="button" class="not-mine single" id="send-later-btn">Not my doctor, I'll send later</button>
     `;
     selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmMatch(c));
-    selectedEl.querySelector('#change-btn').addEventListener('click', backToSearch);
-    selectedEl.querySelector('#not-mine-btn').addEventListener('click', () => renderNotMine({ reason: 'patient_rejected' }));
+    selectedEl.querySelector('#edit-search-btn').addEventListener('click', backToSearch);
+    selectedEl.querySelector('#send-later-btn').addEventListener('click', (e) => handleSendLater(e.currentTarget));
   }
 
   // Render the "use what the patient typed" card. Shown either when the
@@ -291,7 +355,39 @@
     selectedEl.style.display = 'none';
     selectedEl.innerHTML = '';
     searchUI.style.display = 'block';
+    showMainHeader();
     setStatus('');
+  }
+
+  // "Not my doctor, I'll send later" — flip this button's text in place to
+  // "No worries! Press next." and stash a sendLater sentinel so the JotForm
+  // submit handler has a value to send. We intentionally do NOT collapse the
+  // other two buttons — patient can still change their mind and confirm or
+  // re-search until they hit Next on the page.
+  function handleSendLater(btnEl) {
+    const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
+    const doctor = {
+      sendLater: true,
+      notMyDoctor: true,
+      npi: '',
+      displayName: typedName || '',
+      specialty: '',
+      address: '',
+      clinic: typedSignals.clinic || ''
+    };
+    pendingDoctor = doctor;
+    // Fire-and-forget stash so the webhook can pick up the sendLater signal
+    // keyed on the same IP+keyHash. We swallow any error — button text has
+    // already flipped, and the submit path will also fire sendSubmit.
+    stashDoctorWithRetry(doctor, null, null);
+    try {
+      if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
+        JFCustomWidget.sendSubmit({ value: JSON.stringify(doctor), valid: true });
+      }
+    } catch (e) { /* non-fatal */ }
+    btnEl.textContent = 'No worries! Press next.';
+    btnEl.disabled = true;
+    btnEl.classList.add('send-later-confirmed');
   }
   // Hold the confirmed doctor payload so the JotForm 'submit' handler can forward it.
   let pendingDoctor = null;
@@ -318,7 +414,7 @@
         console.warn(DIAG, 'subscribe(' + evt + ') failed:', e.message);
       }
     });
-    try { JFCustomWidget.requestFrameResize({ height: 480 }); } catch(_) {}
+    try { JFCustomWidget.requestFrameResize({ height: 640 }); } catch(_) {}
   } else {
     console.warn(DIAG, 'JFCustomWidget SDK not available — iframe-embed widget may not propagate values');
   }
