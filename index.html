@@ -148,6 +148,21 @@
     background: var(--ok-bg);
     box-shadow: none;
   }
+  /* "Press next below" hint shown in the 0-candidate auto-confirm state,
+     where there's no Confirm button to flip into the "Confirmed. Now press
+     next" state. Visually distinct from the buttons so it reads as guidance,
+     not an actionable control. */
+  .press-next-hint {
+    text-align: center;
+    font-weight: 600; font-size: 14px;
+    color: var(--ok);
+    background: var(--ok-bg);
+    border: 1px solid var(--ok);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 4px;
+    letter-spacing: 0.2px;
+  }
 </style>
 </head>
 <body>
@@ -327,10 +342,11 @@
     selectedEl.querySelector('#send-later-btn').addEventListener('click', (e) => handleSendLater(e.currentTarget));
   }
 
-  // Render the "use what the patient typed" card. Shown either when the
-  // backend returns 0 candidates or the patient clicks "Not your doctor?".
-  // Stashes { notMyDoctor: true, displayName: simplePatientName(...), npi: '' }
-  // so the prescription PDF is generated with a blank NPI and the patient-typed name.
+  // Render the "use what the patient typed" card. Shown only when the backend
+  // returns 0 candidates. This state auto-confirms on render — the patient's
+  // typed info becomes the de-facto confirmed doctor unless they click
+  // "edit search" and try again. There's no "This is my doctor!" button
+  // because there's nothing to match to; we just show a press-next hint.
   function renderNotMine(_ctx) {
     const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
     const initial = (typedName[0] || '?').toUpperCase();
@@ -342,16 +358,22 @@
           <div>
             <div class="nm">${esc(typedName || 'Your doctor')}</div>
             ${typedClinic ? `<div class="sp">${esc(typedClinic)}</div>` : ''}
-            <div class="sp">We&rsquo;ll use the doctor info you entered above.</div>
-            <div class="sp">Select &ldquo;I confirmed my doctor above&rdquo; and press next.</div>
+            <div class="sp">Not in our system \u2014 we&rsquo;ll use the doctor info you entered to find them.</div>
           </div>
         </div>
-        <button type="button" class="confirm-btn" id="confirm-btn">This is my doctor!</button>
-        <button type="button" class="change-link" id="change-btn">\u2190 edit search</button>
+        <div class="press-next-hint">\u2193 Press next below</div>
       </div>
+      <button type="button" class="not-mine single" id="edit-search-btn">Not my doctor, edit search</button>
     `;
-    selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmNotMine(typedName));
-    selectedEl.querySelector('#change-btn').addEventListener('click', backToSearch);
+    selectedEl.querySelector('#edit-search-btn').addEventListener('click', () => {
+      console.log(DIAG, 'button: edit search (from 0-candidate auto-confirm state)');
+      backToSearch();
+    });
+    // Auto-confirm: we already searched once and got 0 hits. Stash the typed
+    // info immediately so the patient can just hit Next. If they change their
+    // mind and click "edit search", the next stash (from a successful match
+    // or another send_later) will overwrite this one in Redis.
+    confirmNotMine(typedName);
   }
 
   function backToSearch() {
@@ -463,8 +485,10 @@
   }
 
   function finishConfirm(doctor, originalCandidate) {
+    // b may be null in the 0-candidates path, where renderNotMine auto-confirms
+    // on render (no explicit "This is my doctor!" button in that view).
     const b = selectedEl.querySelector('#confirm-btn');
-    b.disabled = true;
+    if (b) b.disabled = true;
     pendingDoctor = doctor;
     console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
     // Belt-and-suspenders: also call sendSubmit in case this widget type does
@@ -482,8 +506,10 @@
     // Confirm button flips to an actionable "tap to retry" state so the patient
     // knows their doctor wasn't saved (prevents silent wifi-drop data loss).
     stashDoctorWithRetry(pendingDoctor, b, originalCandidate);
-    b.textContent = '\u2713 Confirmed. Check the box below \u2193';
-    b.classList.add('saved');
+    if (b) {
+      b.textContent = '\u2713 Confirmed. Now press next';
+      b.classList.add('saved');
+    }
   }
   async function stashDoctorWithRetry(doctor, confirmBtn, originalCandidate) {
     const payload = { doctor, keyHash: patientKeyHash };
