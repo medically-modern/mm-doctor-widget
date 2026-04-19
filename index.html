@@ -320,7 +320,10 @@
       <button type="button" class="not-mine single" id="send-later-btn">Not my doctor, I'll send later</button>
     `;
     selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmMatch(c));
-    selectedEl.querySelector('#edit-search-btn').addEventListener('click', backToSearch);
+    selectedEl.querySelector('#edit-search-btn').addEventListener('click', () => {
+      console.log(DIAG, 'button: Not my doctor, edit search (no stash — returning to search view)');
+      backToSearch();
+    });
     selectedEl.querySelector('#send-later-btn').addEventListener('click', (e) => handleSendLater(e.currentTarget));
   }
 
@@ -365,8 +368,10 @@
   // other two buttons — patient can still change their mind and confirm or
   // re-search until they hit Next on the page.
   function handleSendLater(btnEl) {
+    console.log(DIAG, 'button: Not my doctor, I\u2019ll send later (send_later)');
     const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
     const doctor = {
+      action: 'send_later',
       sendLater: true,
       notMyDoctor: true,
       npi: '',
@@ -399,7 +404,9 @@
     ['ready','populate','submit'].forEach(evt => {
       try {
         JFCustomWidget.subscribe(evt, function (data) {
-          console.log(DIAG, 'event:', evt, 'pendingDoctor?', !!pendingDoctor);
+          console.log(DIAG, 'event:', evt,
+            'pendingDoctor?', !!pendingDoctor,
+            'action:', pendingDoctor?.action || '(none — patient pressed Next without using the widget)');
           if (evt === 'submit') {
             try {
               const value = pendingDoctor ? JSON.stringify(pendingDoctor) : '';
@@ -425,7 +432,9 @@
   // Clinic prefers the scraped value but falls back to patient-typed when
   // page scrape failed (aggregator sites block our fetch → no clinic).
   function confirmMatch(c) {
+    console.log(DIAG, 'button: This is my doctor! (confirmed_match)');
     const doctor = {
+      action: 'confirmed_match',
       npi: c.npi || '',
       displayName: c.displayName || '',
       specialty: c.specialty || '',
@@ -440,7 +449,9 @@
   // Clinic uses the patient-typed value (we never did a successful scrape
   // for this path); specialty/address stay blank.
   function confirmNotMine(typedName) {
+    console.log(DIAG, 'button: This is my doctor (typed-name fallback, confirmed_typed_name)');
     const doctor = {
+      action: 'confirmed_typed_name',
       notMyDoctor: true,
       npi: '',
       displayName: typedName || '',
