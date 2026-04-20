@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+<script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
+</head>
+<body>
+<div id="out" style="font-family:monospace;padding:20px;font-size:13px;"></div>
+<script>
+var out = document.getElementById('out');
+function log(msg) { out.innerHTML += msg + '<br>'; console.log(msg); }
+
+log('SDK loaded: ' + (typeof JFCustomWidget));
+
+if (window.JFCustomWidget) {
+  JFCustomWidget.subscribe('ready', function(data) {
+    log('READY event fired');
+    log('qid: ' + (data && data.qid));
+    log('formId: ' + (data && data.formID));
+    
+    // Test 1: getFieldsValueByName — read patient lastName and phone
+    log('--- Calling getFieldsValueByName(["lastName","phoneNumber"]) ---');
+    try {
+      JFCustomWidget.getFieldsValueByName(["lastName","phoneNumber"], function(values) {
+        log('GOT VALUES: ' + JSON.stringify(values));
+      });
+    } catch(e) {
+      log('ERROR: ' + e.message);
+    }
+    
+    // Test 2: getFieldsValueById — read by QID
+    log('--- Calling getFieldsValueById(["33","89"]) ---');
+    try {
+      JFCustomWidget.getFieldsValueById(["33","89"], function(values) {
+        log('GOT VALUES BY ID: ' + JSON.stringify(values));
+      });
+    } catch(e) {
+      log('ERROR: ' + e.message);
+    }
+  });
+} else {
+  log('JFCustomWidget not available (not in JotForm iframe)');
+}
+</script>
+</body>
+</html>
