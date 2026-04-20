@@ -4,41 +4,142 @@
 <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 </head>
 <body>
-<div id="out" style="font-family:monospace;padding:20px;font-size:13px;"></div>
+<div id="out" style="font-family:monospace;padding:20px;font-size:13px;line-height:1.6;"></div>
 <script>
 var out = document.getElementById('out');
-function log(msg) { out.innerHTML += msg + '<br>'; console.log(msg); }
+function log(msg) { out.innerHTML += msg + '<br>'; console.log('[test-sdk] ' + msg); }
 
-log('SDK loaded: ' + (typeof JFCustomWidget));
+log('=== JFCustomWidget SDK Test v2 ===');
+log('Time: ' + new Date().toISOString());
+log('SDK type: ' + (typeof JFCustomWidget));
+log('window.parent === window: ' + (window.parent === window));
+log('window.parent.parent === window.parent: ' + (window.parent.parent === window.parent));
 
+// Enumerate SDK methods
 if (window.JFCustomWidget) {
-  JFCustomWidget.subscribe('ready', function(data) {
-    log('READY event fired');
-    log('qid: ' + (data && data.qid));
-    log('formId: ' + (data && data.formID));
-    
-    // Test 1: getFieldsValueByName — read patient lastName and phone
-    log('--- Calling getFieldsValueByName(["lastName","phoneNumber"]) ---');
+  var methods = [];
+  for (var k in JFCustomWidget) {
+    if (typeof JFCustomWidget[k] === 'function') methods.push(k);
+  }
+  log('SDK methods: ' + methods.join(', '));
+
+  // Check internal state
+  log('SDK.qid: ' + (JFCustomWidget.qid || 'undefined'));
+  log('SDK.formID: ' + (JFCustomWidget.formID || 'undefined'));
+
+  // Subscribe to ALL known events
+  var events = ['ready', 'submit', 'populate', 'clear', 'show', 'reload', 'style'];
+  events.forEach(function(evt) {
+    JFCustomWidget.subscribe(evt, function(data) {
+      log('EVENT [' + evt + '] fired: ' + JSON.stringify(data).substring(0, 300));
+
+      // On ready, run field reads
+      if (evt === 'ready') {
+        runFieldTests();
+      }
+    });
+  });
+
+  // Also try calling methods WITHOUT waiting for ready — after small delays
+  setTimeout(function() {
+    log('--- 1s timeout: trying getFieldsValueByName WITHOUT ready ---');
+    tryFieldRead();
+  }, 1000);
+
+  setTimeout(function() {
+    log('--- 3s timeout: trying getFieldsValueByName (2nd attempt) ---');
+    tryFieldRead();
+  }, 3000);
+
+  setTimeout(function() {
+    log('--- 5s timeout: trying getFieldsValueById ---');
+    tryFieldReadById();
+  }, 5000);
+
+  // Also try direct postMessage to parent
+  setTimeout(function() {
+    log('--- 7s timeout: trying raw postMessage to parent ---');
     try {
-      JFCustomWidget.getFieldsValueByName(["lastName","phoneNumber"], function(values) {
-        log('GOT VALUES: ' + JSON.stringify(values));
-      });
+      window.parent.postMessage(JSON.stringify({
+        type: 'fields:capture',
+        identifier: 'name',
+        fields: ['lastName', 'phoneNumber'],
+        qid: '119'
+      }), '*');
+      log('postMessage sent to parent');
     } catch(e) {
-      log('ERROR: ' + e.message);
+      log('postMessage ERROR: ' + e.message);
     }
-    
-    // Test 2: getFieldsValueById — read by QID
-    log('--- Calling getFieldsValueById(["33","89"]) ---');
-    try {
-      JFCustomWidget.getFieldsValueById(["33","89"], function(values) {
-        log('GOT VALUES BY ID: ' + JSON.stringify(values));
-      });
-    } catch(e) {
-      log('ERROR: ' + e.message);
+  }, 7000);
+
+  // Listen for ANY postMessage responses
+  window.addEventListener('message', function(e) {
+    var dataStr = (typeof e.data === 'string') ? e.data : JSON.stringify(e.data);
+    // Only log relevant messages (not noise)
+    if (dataStr.indexOf('fields') > -1 || dataStr.indexOf('ready') > -1 ||
+        dataStr.indexOf('settings') > -1 || dataStr.indexOf('submit') > -1 ||
+        dataStr.indexOf('widget') > -1 || dataStr.indexOf('capture') > -1 ||
+        dataStr.indexOf('event') > -1 || dataStr.indexOf('store') > -1) {
+      log('MSG from ' + e.origin + ': ' + dataStr.substring(0, 400));
     }
   });
+
 } else {
-  log('JFCustomWidget not available (not in JotForm iframe)');
+  log('JFCustomWidget NOT available — page is not inside JotForm iframe');
+}
+
+function runFieldTests() {
+  log('--- Running field read tests (post-ready) ---');
+  tryFieldRead();
+  tryFieldReadById();
+  tryStoreToField();
+  tryListenFromField();
+}
+
+function tryFieldRead() {
+  try {
+    JFCustomWidget.getFieldsValueByName(["lastName","phoneNumber"], function(values) {
+      log('BY-NAME RESULT: ' + JSON.stringify(values));
+    });
+    log('getFieldsValueByName called (waiting for callback...)');
+  } catch(e) {
+    log('getFieldsValueByName ERROR: ' + e.message);
+  }
+}
+
+function tryFieldReadById() {
+  try {
+    JFCustomWidget.getFieldsValueById(["33","89"], function(values) {
+      log('BY-ID RESULT: ' + JSON.stringify(values));
+    });
+    log('getFieldsValueById called (waiting for callback...)');
+  } catch(e) {
+    log('getFieldsValueById ERROR: ' + e.message);
+  }
+}
+
+function tryStoreToField() {
+  // Try writing a test value to a field (Q119 itself)
+  try {
+    JFCustomWidget.storeToField("119", "test-token-123", function(result) {
+      log('STORE-TO-FIELD RESULT: ' + JSON.stringify(result));
+    });
+    log('storeToField called');
+  } catch(e) {
+    log('storeToField ERROR: ' + e.message);
+  }
+}
+
+function tryListenFromField() {
+  // Try subscribing to changes on lastName field (Q33)
+  try {
+    JFCustomWidget.listenFromField("33", "change", function(data) {
+      log('LISTEN-FROM-FIELD Q33 change: ' + JSON.stringify(data));
+    });
+    log('listenFromField subscribed to Q33');
+  } catch(e) {
+    log('listenFromField ERROR: ' + e.message);
+  }
 }
 </script>
 </body>
