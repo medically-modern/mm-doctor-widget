@@ -66,11 +66,64 @@ if (window.JFCustomWidget) {
         fields: ['lastName', 'phoneNumber'],
         qid: '119'
       }), '*');
-      log('postMessage sent to parent');
+      log('postMessage sent to parent (wrapper)');
     } catch(e) {
-      log('postMessage ERROR: ' + e.message);
+      log('postMessage to parent ERROR: ' + e.message);
     }
   }, 7000);
+
+  // Try sending to GRANDPARENT (form page, bypassing wrapper)
+  setTimeout(function() {
+    log('--- 9s timeout: trying raw postMessage to GRANDPARENT (form page) ---');
+    try {
+      var grandparent = window.parent.parent;
+      log('grandparent === parent: ' + (grandparent === window.parent));
+      log('grandparent === top: ' + (grandparent === window.top));
+      // Send fields:capture to the JotForm form page directly
+      grandparent.postMessage(JSON.stringify({
+        type: 'fields:capture',
+        identifier: 'name',
+        fields: ['lastName', 'phoneNumber'],
+        qid: '119'
+      }), '*');
+      log('postMessage sent to grandparent');
+      // Also try the format the widget SDK uses internally
+      grandparent.postMessage(JSON.stringify({
+        type: 'fields:capture',
+        identifier: 'id',
+        fields: ['33', '89'],
+        qid: '119'
+      }), '*');
+      log('postMessage (by ID) sent to grandparent');
+    } catch(e) {
+      log('grandparent postMessage ERROR: ' + e.message);
+    }
+  }, 9000);
+
+  // Try reading from DOM of parent/grandparent (will fail cross-origin but worth checking)
+  setTimeout(function() {
+    log('--- 11s timeout: DOM access tests ---');
+    try {
+      var doc = window.parent.document;
+      log('parent.document accessible! title: ' + doc.title);
+      var ln = doc.querySelector('input[name="q33_lastName"]');
+      log('parent lastName field: ' + (ln ? ln.value : 'not found'));
+      var ph = doc.querySelector('input[name="q89_phoneNumber"]');
+      log('parent phone field: ' + (ph ? ph.value : 'not found'));
+    } catch(e) {
+      log('parent DOM access: ' + e.message);
+    }
+    try {
+      var gdoc = window.parent.parent.document;
+      log('grandparent.document accessible! title: ' + gdoc.title);
+      var ln2 = gdoc.querySelector('input[name="q33_lastName"]');
+      log('grandparent lastName field: ' + (ln2 ? ln2.value : 'not found'));
+      var ph2 = gdoc.querySelector('input[name="q89_phoneNumber"]');
+      log('grandparent phone field: ' + (ph2 ? ph2.value : 'not found'));
+    } catch(e) {
+      log('grandparent DOM access: ' + e.message);
+    }
+  }, 11000);
 
   // Listen for ANY postMessage responses
   window.addEventListener('message', function(e) {
