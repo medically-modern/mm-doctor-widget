@@ -266,39 +266,64 @@
     }
     window.addEventListener('message', onMessage);
 
-    // Send capture request — by name (works for control_textbox fields)
-    // Small delay to let JotForm's message handler initialize
-    setTimeout(function() {
+    // Send capture request — by name (works for control_textbox fields).
+    // Testing showed JotForm may not return field values until ~7-9s after
+    // iframe load. We retry aggressively at 500ms, 2s, 4s, 8s to cover
+    // fast and slow cases. Once keyHash is captured, retries stop.
+    var captureMsg = JSON.stringify({
+      type: 'fields:capture',
+      eventID: captureId,
+      identifier: 'name',
+      fields: ['lastName', 'firstName'],
+      qid: '119'
+    });
+    function sendCapture(label) {
+      if (patientKeyHash) return; // already got it
       try {
-        window.parent.postMessage(JSON.stringify({
-          type: 'fields:capture',
-          eventID: captureId,
-          identifier: 'name',
-          fields: ['lastName', 'firstName'],
-          qid: '119'
-        }), '*');
-        console.log('[mm-doctor v2] fields:capture sent to parent');
-      } catch (err) {
-        console.warn('[mm-doctor v2] fields:capture failed:', err.message);
-      }
-    }, 500);
+        window.parent.postMessage(captureMsg, '*');
+        console.log('[mm-doctor v2] fields:capture ' + label);
+      } catch (_) {}
+    }
+    setTimeout(function() { sendCapture('sent (500ms)'); }, 500);
+    setTimeout(function() { sendCapture('retry (2s)'); }, 2000);
+    setTimeout(function() { sendCapture('retry (4s)'); }, 4000);
+    setTimeout(function() { sendCapture('retry (8s)'); }, 8000);
+  })();
 
-    // Fallback: retry once at 2s in case first attempt was too early
-    setTimeout(function() {
-      if (!patientKeyHash) {
+  // Just-in-time keyHash capture: called right before stash POST.
+  // If the timed retries above all missed, this gives one last shot.
+  function ensureKeyHash() {
+    if (patientKeyHash || window.parent === window) return;
+    try {
+      var jitId = 'kh_jit_' + Date.now();
+      // Fire synchronously — response comes async via message listener,
+      // but at this point the stash POST is about to fire anyway.
+      // The message listener from capturePatientFields() won't match
+      // this eventID, so we add a one-shot listener here.
+      function onJit(e) {
         try {
-          window.parent.postMessage(JSON.stringify({
-            type: 'fields:capture',
-            eventID: captureId,
-            identifier: 'name',
-            fields: ['lastName', 'firstName'],
-            qid: '119'
-          }), '*');
-          console.log('[mm-doctor v2] fields:capture retry sent');
+          var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+          if (d && d.type === 'event:receiver' && d.eventID === jitId && d.data) {
+            var lastName = '', firstName = '';
+            for (var i = 0; i < d.data.length; i++) {
+              if (d.data[i].selector === 'lastName' || d.data[i].selector === '33') lastName = d.data[i].value || '';
+              if (d.data[i].selector === 'firstName' || d.data[i].selector === '32') firstName = d.data[i].value || '';
+            }
+            if (lastName && !patientKeyHash) {
+              patientKeyHash = computeKeyHash(lastName, firstName);
+              console.log('[mm-doctor v2] JIT keyHash captured:', patientKeyHash);
+            }
+            window.removeEventListener('message', onJit);
+          }
         } catch (_) {}
       }
-    }, 2000);
-  })();
+      window.addEventListener('message', onJit);
+      window.parent.postMessage(JSON.stringify({
+        type: 'fields:capture', eventID: jitId,
+        identifier: 'name', fields: ['lastName', 'firstName'], qid: '119'
+      }), '*');
+    } catch (_) {}
+  }
 
   console.log('[mm-doctor v2] patient keyHash?', patientKeyHash ? 'yes' : 'pending (postMessage capture in flight)');
 
@@ -586,6 +611,8 @@
     }
   }
   async function stashDoctorWithRetry(doctor, confirmBtn, originalCandidate) {
+    // Just-in-time: one last attempt to capture keyHash if timed retries missed
+    ensureKeyHash();
     const payload = { doctor, keyHash: patientKeyHash };
     const attempts = 3;
     const delays = [0, 800, 2400]; // ms before each attempt
