@@ -411,7 +411,8 @@
     if (c.specialty) subs.push(esc(c.specialty));
     if (shownClinic) subs.push(esc(shownClinic));
     if (c.address && (!shownClinic || !shownClinic.includes(c.address))) subs.push(esc(c.address));
-    if (c.npi)       subs.push('NPI ' + esc(c.npi));
+    // NPI intentionally hidden from patient view — kept in the stash payload
+    // for backend/Monday but not shown on the match card.
     selectedEl.innerHTML = `
       <div class="selected-card">
         <div class="selected-head">
