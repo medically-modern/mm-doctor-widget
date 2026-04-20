@@ -213,27 +213,94 @@
   // and clinic already live in separate JotForm fields).
   let typedSignals = { firstName: '', lastName: '', phone: '', clinic: '' };
 
-  // Patient identity from URL params passed by JotForm (pfn/pln/pph). This lets
-  // us build a deterministic join key so the webhook attaches the right doctor
-  // even if two patients share a public IP (CGNAT / shared wifi collision).
-  // Graceful fallback: if params are missing, keyHash stays null and we
-  // continue with the original IP-only join.
-  const urlParams = new URLSearchParams(window.location.search);
-  const patientIdentity = {
-    firstName: urlParams.get('pfn') || '',
-    lastName:  urlParams.get('pln') || '',
-    phone:     urlParams.get('pph') || ''
-  };
-  function computeKeyHash(lastName, phone) {
+  // Patient identity — read from parent JotForm via raw postMessage.
+  // The widget iframe sends a `fields:capture` message to the parent form,
+  // which replies with field values. This works because the frameSrc hack
+  // gives us a single-iframe setup (no iframe-embed wrapper blocking msgs).
+  // keyHash = `lastName:firstName` (lowercased, alpha-only) — deterministic
+  // join key so the webhook attaches the right doctor even if two patients
+  // share a public IP (CGNAT / shared wifi / iCloud Private Relay).
+  let patientKeyHash = null;
+
+  function computeKeyHash(lastName, firstName) {
     if (!lastName) return null;
     const ln = String(lastName).toLowerCase().replace(/[^a-z]/g, '');
-    const digits = String(phone || '').replace(/\D/g, '');
-    const last4 = digits.slice(-4);
-    if (!ln || last4.length < 4) return null;
-    return `${ln}:${last4}`;
+    const fn = String(firstName || '').toLowerCase().replace(/[^a-z]/g, '');
+    if (!ln || !fn) return null;
+    return `${ln}:${fn}`;
   }
-  const patientKeyHash = computeKeyHash(patientIdentity.lastName, patientIdentity.phone);
-  console.log('[mm-doctor v2] patient keyHash?', patientKeyHash ? 'yes' : 'no (URL params missing)');
+
+  // Fire-and-forget field capture via postMessage to parent JotForm page.
+  // We request lastName (Q33) and firstName (Q32) — both control_textbox,
+  // which JotForm reliably returns. control_phone fields return empty.
+  (function capturePatientFields() {
+    if (window.parent === window) {
+      console.log('[mm-doctor v2] not in iframe, skipping field capture');
+      return;
+    }
+    // Listen for the response
+    const captureId = 'kh_' + Date.now();
+    function onMessage(e) {
+      try {
+        var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (d && d.type === 'event:receiver' && d.eventID === captureId && d.data) {
+          var fields = d.data;
+          var lastName = '', firstName = '';
+          for (var i = 0; i < fields.length; i++) {
+            if (fields[i].selector === 'lastName' || fields[i].selector === '33') {
+              lastName = fields[i].value || '';
+            }
+            if (fields[i].selector === 'firstName' || fields[i].selector === '32') {
+              firstName = fields[i].value || '';
+            }
+          }
+          if (lastName) {
+            patientKeyHash = computeKeyHash(lastName, firstName);
+            console.log('[mm-doctor v2] keyHash captured:', patientKeyHash);
+          } else {
+            console.log('[mm-doctor v2] field capture returned but lastName empty');
+          }
+          window.removeEventListener('message', onMessage);
+        }
+      } catch (_) {}
+    }
+    window.addEventListener('message', onMessage);
+
+    // Send capture request — by name (works for control_textbox fields)
+    // Small delay to let JotForm's message handler initialize
+    setTimeout(function() {
+      try {
+        window.parent.postMessage(JSON.stringify({
+          type: 'fields:capture',
+          eventID: captureId,
+          identifier: 'name',
+          fields: ['lastName', 'firstName'],
+          qid: '119'
+        }), '*');
+        console.log('[mm-doctor v2] fields:capture sent to parent');
+      } catch (err) {
+        console.warn('[mm-doctor v2] fields:capture failed:', err.message);
+      }
+    }, 500);
+
+    // Fallback: retry once at 2s in case first attempt was too early
+    setTimeout(function() {
+      if (!patientKeyHash) {
+        try {
+          window.parent.postMessage(JSON.stringify({
+            type: 'fields:capture',
+            eventID: captureId,
+            identifier: 'name',
+            fields: ['lastName', 'firstName'],
+            qid: '119'
+          }), '*');
+          console.log('[mm-doctor v2] fields:capture retry sent');
+        } catch (_) {}
+      }
+    }, 2000);
+  })();
+
+  console.log('[mm-doctor v2] patient keyHash?', patientKeyHash ? 'yes' : 'pending (postMessage capture in flight)');
 
   // Backend already returns a simple "First Last, CRED" displayName (see
   // toSimpleDisplayName in lookup.js). This widget-side helper is only used
