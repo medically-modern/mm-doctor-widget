@@ -400,7 +400,9 @@
       displayName: typedName || '',
       specialty: '',
       address: '',
-      clinic: typedSignals.clinic || ''
+      clinic: typedSignals.clinic || '',
+      // Patient-typed phone — never scraped.
+      phone: typedSignals.phone || ''
     };
     pendingDoctor = doctor;
     // Fire-and-forget stash so the webhook can pick up the sendLater signal
@@ -461,7 +463,10 @@
       displayName: c.displayName || '',
       specialty: c.specialty || '',
       address: c.address || '',
-      clinic: c.clinic || typedSignals.clinic || ''
+      clinic: c.clinic || typedSignals.clinic || '',
+      // Doctor phone is ONLY what the patient typed — per Josh 2026-04-20.
+      // Backend scraper returns phone:'' by design; we never overwrite with scraped data.
+      phone: typedSignals.phone || ''
     };
     finishConfirm(doctor, c);
   }
@@ -479,7 +484,9 @@
       displayName: typedName || '',
       specialty: '',
       address: '',
-      clinic: typedSignals.clinic || ''
+      clinic: typedSignals.clinic || '',
+      // Patient-typed phone — never scraped.
+      phone: typedSignals.phone || ''
     };
     finishConfirm(doctor, null);
   }
