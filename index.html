@@ -75,10 +75,7 @@
 
   <div class="field">
     <label>Doctor Name <span class="req">*</span></label>
-    <div class="name-row">
-      <span class="dr-prefix">Dr.</span>
-      <input type="text" id="doctorName" autocomplete="off" placeholder="Smith">
-    </div>
+    <input type="text" id="doctorName" autocomplete="off" placeholder="First Last">
     <div class="error-msg" id="nameError">Please enter your doctor's name.</div>
   </div>
 
@@ -122,8 +119,7 @@
   });
 
   function getName() {
-    var raw = nameInput.value.trim();
-    return raw ? 'Dr. ' + raw : '';
+    return nameInput.value.trim();
   }
 
   function getPhoneRaw() {
@@ -195,8 +191,7 @@
               var saved = JSON.parse(data.value);
               if (saved.displayName) {
                 // Strip "Dr. " prefix for the input field
-                var name = saved.displayName.replace(/^Dr\.\s*/i, '');
-                nameInput.value = name;
+                nameInput.value = saved.displayName;
               }
               if (saved.phone) phoneInput.value = saved.phone;
             } catch (e) { /* not valid JSON */ }
