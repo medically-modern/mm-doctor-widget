@@ -25,656 +25,196 @@
     font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text); background: transparent;
   }
-  .wrap { padding: 14px; width: 100%; max-width: 520px; margin: 0 auto; box-sizing: border-box; }
-  h2 { font-size: 15px; margin: 0 0 6px; font-weight: 600; color: var(--text); }
-  p.help { margin: 0 0 12px; font-size: 12px; color: var(--muted); line-height: 1.4; }
-  .field { margin-bottom: 8px; }
-  label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+  .wrap { padding: 14px; width: 100%; max-width: 520px; margin: 0 auto; }
+
+  h1.doc-title {
+    font-size: 24px; font-weight: 700; color: var(--brand);
+    margin: 0 0 10px; line-height: 1.2; text-align: center;
+  }
+  p.doc-tagline {
+    font-size: 14px; color: #56666b; margin: 0 0 20px;
+    line-height: 1.5; padding: 0 8px; text-align: center;
+  }
+
+  .field { margin-bottom: 14px; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 500; }
+  label .req { color: #b91c1c; }
+
+  .name-row {
+    display: flex; align-items: center; gap: 0;
+  }
+  .dr-prefix {
+    flex-shrink: 0;
+    padding: 10px 10px 10px 12px;
+    font-size: 16px; font-weight: 600; color: var(--text);
+    background: #f3f4f6;
+    border: 1px solid #ccc;
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    font-family: 'Poppins', inherit;
+    line-height: 1.4;
+  }
+  .name-row input[type="text"] {
+    flex: 1; min-width: 0;
+    border-radius: 0 6px 6px 0;
+  }
+
   input[type="text"], input[type="tel"] {
     width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;
     font-size: 16px; font-family: 'Poppins', inherit; background: #fff; color: var(--text);
     transition: border-color 0.2s ease-in-out;
   }
   input:focus { outline: none; border-color: #80adaa; box-shadow: 0 0 0 2px rgba(128,173,170,0.3); }
-  .btn {
-    width: 100%; padding: 10px 14px; border: 1px solid var(--brand);
-    background: var(--brand); color: #fff; border-radius: 7px; font-weight: 600;
-    cursor: pointer; font-size: 14px; font-family: inherit; margin-top: 4px;
-  }
-  .btn:disabled { opacity: .6; cursor: not-allowed; }
-  .status { font-size: 12px; color: var(--muted); padding: 8px 0 0; min-height: 16px; text-align: center; }
-  .status.err { color: #b91c1c; }
-  .list { display: grid; gap: 6px; margin-top: 10px; }
-  .selected-card {
-    margin-top: 12px; padding: 18px 16px; border: 2px solid var(--ok);
-    background: var(--ok-bg); border-radius: 10px;
-  }
-  .selected-head {
-    display: flex; gap: 16px; align-items: center; margin-bottom: 14px;
-  }
-  .selected-head img {
-    width: 88px; height: 88px; border-radius: 50%; object-fit: cover;
-    background: #e5e7eb; flex-shrink: 0;
-    border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  }
-  .selected-head .nm { font-weight: 700; font-size: 16px; line-height: 1.2; }
-  .selected-head .sp { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
-  .confirm-btn {
-    width: 100%; padding: 14px 14px; background: var(--ok); color: #fff;
-    border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
-    cursor: pointer; font-family: inherit; letter-spacing: 0.2px;
-  }
-  .confirm-btn:disabled { opacity: .6; cursor: not-allowed; }
-  .confirm-btn.saved { background: #065f46; }
-  .change-link { display: block; text-align: center; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; width: 100%; padding: 0; }
-  .change-link:hover { color: var(--text); }
-  .not-mine {
-    display: block; width: 100%;
-    margin-top: 12px; padding: 14px 16px;
-    background: #fff; border: 1.5px solid var(--brand);
-    border-radius: 10px; text-align: center;
-    box-shadow: 0 1px 4px rgba(44, 110, 106, 0.08);
-    cursor: pointer; font-family: inherit;
-    transition: background 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-  }
-  .not-mine:hover {
-    background: var(--brand-soft);
-    box-shadow: 0 2px 8px rgba(44, 110, 106, 0.15);
-  }
-  .not-mine:focus { outline: 2px solid var(--brand); outline-offset: 2px; }
-  .not-mine:active { background: var(--brand-soft); }
-  .not-mine-head {
-    display: block;
-    font-weight: 700; font-size: 14px; color: var(--text);
-    margin-bottom: 6px; letter-spacing: 0.1px;
-  }
-  .not-mine-body {
-    display: block;
-    font-size: 12px; color: var(--muted); line-height: 1.45;
-  }
-  .typed-head {
-    display: flex; gap: 16px; align-items: center; margin-bottom: 14px;
-  }
-  .typed-head .avatar {
-    width: 88px; height: 88px; border-radius: 50%;
-    background: #e5e7eb; display: flex; align-items: center; justify-content: center;
-    color: #9ca3af; font-size: 34px; font-weight: 700; flex-shrink: 0;
-    border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-    font-family: 'Poppins', sans-serif;
-  }
-  /* Main header (moved from JotForm Q71 so widget can hide it on results) */
-  #main-header {
-    text-align: center;
-    padding: 8px 8px 4px;
-    margin: 0 auto 10px;
-    max-width: 540px;
-  }
-  #main-header.hidden { display: none; }
-  .doc-title {
-    font-size: 24px; font-weight: 700; color: #2c6e6a;
-    margin: 0 0 10px; line-height: 1.2;
-  }
-  .doc-tagline {
-    font-size: 14px; color: #56666b; margin: 0 0 14px;
-    line-height: 1.5; padding: 0 8px;
-  }
-  .verify-pill-wrap {
-    text-align: center; margin: 0 0 14px;
-  }
-  .verify-pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #f0f9f8; border: 1px solid #d4edec;
-    border-radius: 999px; padding: 6px 14px;
-    font-size: 12px; color: #2c6e6a;
-  }
-  .verify-dot {
-    display: inline-block; width: 14px; height: 14px;
-    border-radius: 50%; background: #14a38e; position: relative;
-  }
-  .verify-dot svg { position: absolute; top: 2px; left: 2px; }
-  /* Single-line variant of .not-mine used for the new edit-search / send-later buttons */
-  .not-mine.single {
-    font-weight: 600; font-size: 14px;
-    color: var(--text); letter-spacing: 0.1px;
-  }
-  .not-mine.send-later-confirmed {
-    background: var(--ok-bg);
-    border-color: var(--ok);
-    color: var(--ok);
-    cursor: default;
-    box-shadow: none;
-  }
-  .not-mine.send-later-confirmed:hover {
-    background: var(--ok-bg);
-    box-shadow: none;
-  }
-  /* "Press next below" hint shown in the 0-candidate auto-confirm state,
-     where there's no Confirm button to flip into the "Confirmed. Now press
-     next" state. Visually distinct from the buttons so it reads as guidance,
-     not an actionable control. */
-  .press-next-hint {
-    text-align: center;
-    font-weight: 600; font-size: 14px;
-    color: var(--ok);
-    background: var(--ok-bg);
-    border: 1px solid var(--ok);
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-top: 4px;
-    letter-spacing: 0.2px;
-  }
+  input.error { border-color: #b91c1c; }
+  .error-msg { font-size: 11px; color: #b91c1c; margin-top: 3px; display: none; }
+  .error-msg.show { display: block; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div id="main-header">
-    <h1 class="doc-title">Who's your doctor?</h1>
-    <p class="doc-tagline">We'll get your supplies covered - just need a prescription from your provider.</p>
-  </div>
-  <div class="verify-pill-wrap">
-    <div class="verify-pill">
-      <span class="verify-dot" aria-hidden="true">
-        <svg viewBox="0 0 10 10" width="10" height="10"><circle cx="5" cy="4" r="1.8" fill="#fff"/><path d="M2 9 Q5 6 8 9" stroke="#fff" stroke-width="1.2" fill="none"/></svg>
-      </span>
-      Verified from the national provider database
+  <h1 class="doc-title">Who's your doctor?</h1>
+  <p class="doc-tagline">We'll get your supplies covered &mdash; just need a prescription from your provider.</p>
+
+  <div class="field">
+    <label>Doctor Name <span class="req">*</span></label>
+    <div class="name-row">
+      <span class="dr-prefix">Dr.</span>
+      <input type="text" id="doctorName" autocomplete="off" placeholder="First Last">
     </div>
+    <div class="error-msg" id="nameError">Please enter your doctor's name.</div>
   </div>
-  <div id="search-ui">
-    <p class="help">If you need to skip any fields we understand, but the more we have the easier it is to find them in our database.</p>
 
-    <div class="field"><label>First name *</label><input type="text" id="firstName" autocomplete="off"></div>
-    <div class="field"><label>Last name *</label><input type="text" id="lastName" autocomplete="off"></div>
-    <div class="field"><label>Clinic</label><input type="text" id="clinic" autocomplete="off" placeholder="e.g. Acme Medical"></div>
-    <div class="field"><label>Phone</label><input type="tel" id="phone" autocomplete="off" placeholder="(555) 123-4567"></div>
-
-    <button class="btn" id="search-btn" type="button">Search Medically Modern Database</button>
-    <div id="status" class="status"></div>
+  <div class="field">
+    <label>Doctor Phone Number <span class="req">*</span></label>
+    <input type="tel" id="doctorPhone" autocomplete="off" placeholder="(555) 123-4567">
+    <div class="error-msg" id="phoneError">Please enter a valid 10-digit phone number.</div>
   </div>
-  <div id="selected" style="display:none;" aria-live="polite"></div>
 </div>
 
 <script>
 (function () {
-  const API_BASE = 'https://mm-doctor-api-production.up.railway.app';
-  const $ = (id) => document.getElementById(id);
-  const statusEl = $('status');
-  const selectedEl = $('selected');
-  const searchUI = $('search-ui');
-  const mainHeader = $('main-header');
-  const btn = $('search-btn');
-  // Toggle the big "Who's your doctor?" + tagline heading. Kept visible on
-  // the search view, hidden once a doctor card renders (verify pill stays).
-  function hideMainHeader() { if (mainHeader) mainHeader.classList.add('hidden'); }
-  function showMainHeader() { if (mainHeader) mainHeader.classList.remove('hidden'); }
-  let inflight = null;
-  let submissionId = null;
-  // Remember what the patient typed so we can present a "Not your doctor?"
-  // escape that uses their inputs verbatim (simple First Last name, phone
-  // and clinic already live in separate JotForm fields).
-  let typedSignals = { firstName: '', lastName: '', phone: '', clinic: '' };
-
-  // Patient identity — read from parent JotForm via raw postMessage.
-  // The widget iframe sends a `fields:capture` message to the parent form,
-  // which replies with field values. This works because the frameSrc hack
-  // gives us a single-iframe setup (no iframe-embed wrapper blocking msgs).
-  // keyHash = `lastName:firstName` (lowercased, alpha-only) — deterministic
-  // join key so the webhook attaches the right doctor even if two patients
-  // share a public IP (CGNAT / shared wifi / iCloud Private Relay).
-  let patientKeyHash = null;
-
-  function computeKeyHash(lastName, firstName) {
-    if (!lastName) return null;
-    const ln = String(lastName).toLowerCase().replace(/[^a-z]/g, '');
-    const fn = String(firstName || '').toLowerCase().replace(/[^a-z]/g, '');
-    if (!ln || !fn) return null;
-    return `${ln}:${fn}`;
-  }
-
-  // Fire-and-forget field capture via postMessage to parent JotForm page.
-  // We request lastName (Q33) and firstName (Q32) — both control_textbox,
-  // which JotForm reliably returns. control_phone fields return empty.
-  (function capturePatientFields() {
-    if (window.parent === window) {
-      console.log('[mm-doctor v2] not in iframe, skipping field capture');
-      return;
-    }
-    // Listen for the response
-    const captureId = 'kh_' + Date.now();
-    function onMessage(e) {
-      try {
-        var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-        if (d && d.type === 'event:receiver' && d.eventID === captureId && d.data) {
-          var fields = d.data;
-          var lastName = '', firstName = '';
-          for (var i = 0; i < fields.length; i++) {
-            if (fields[i].selector === 'lastName' || fields[i].selector === '33') {
-              lastName = fields[i].value || '';
-            }
-            if (fields[i].selector === 'firstName' || fields[i].selector === '32') {
-              firstName = fields[i].value || '';
-            }
-          }
-          if (lastName) {
-            patientKeyHash = computeKeyHash(lastName, firstName);
-            console.log('[mm-doctor v2] keyHash captured:', patientKeyHash);
-          } else {
-            console.log('[mm-doctor v2] field capture returned but lastName empty');
-          }
-          window.removeEventListener('message', onMessage);
-        }
-      } catch (_) {}
-    }
-    window.addEventListener('message', onMessage);
-
-    // Send capture request — by name (works for control_textbox fields).
-    // Testing showed JotForm may not return field values until ~7-9s after
-    // iframe load. We retry aggressively at 500ms, 2s, 4s, 8s to cover
-    // fast and slow cases. Once keyHash is captured, retries stop.
-    var captureMsg = JSON.stringify({
-      type: 'fields:capture',
-      eventID: captureId,
-      identifier: 'name',
-      fields: ['lastName', 'firstName'],
-      qid: '119'
-    });
-    function sendCapture(label) {
-      if (patientKeyHash) return; // already got it
-      try {
-        window.parent.postMessage(captureMsg, '*');
-        console.log('[mm-doctor v2] fields:capture ' + label);
-      } catch (_) {}
-    }
-    setTimeout(function() { sendCapture('sent (500ms)'); }, 500);
-    setTimeout(function() { sendCapture('retry (2s)'); }, 2000);
-    setTimeout(function() { sendCapture('retry (4s)'); }, 4000);
-    setTimeout(function() { sendCapture('retry (8s)'); }, 8000);
-  })();
-
-  // Just-in-time keyHash capture: called right before stash POST.
-  // If the timed retries above all missed, this gives one last shot.
-  function ensureKeyHash() {
-    if (patientKeyHash || window.parent === window) return;
-    try {
-      var jitId = 'kh_jit_' + Date.now();
-      // Fire synchronously — response comes async via message listener,
-      // but at this point the stash POST is about to fire anyway.
-      // The message listener from capturePatientFields() won't match
-      // this eventID, so we add a one-shot listener here.
-      function onJit(e) {
-        try {
-          var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
-          if (d && d.type === 'event:receiver' && d.eventID === jitId && d.data) {
-            var lastName = '', firstName = '';
-            for (var i = 0; i < d.data.length; i++) {
-              if (d.data[i].selector === 'lastName' || d.data[i].selector === '33') lastName = d.data[i].value || '';
-              if (d.data[i].selector === 'firstName' || d.data[i].selector === '32') firstName = d.data[i].value || '';
-            }
-            if (lastName && !patientKeyHash) {
-              patientKeyHash = computeKeyHash(lastName, firstName);
-              console.log('[mm-doctor v2] JIT keyHash captured:', patientKeyHash);
-            }
-            window.removeEventListener('message', onJit);
-          }
-        } catch (_) {}
-      }
-      window.addEventListener('message', onJit);
-      window.parent.postMessage(JSON.stringify({
-        type: 'fields:capture', eventID: jitId,
-        identifier: 'name', fields: ['lastName', 'firstName'], qid: '119'
-      }), '*');
-    } catch (_) {}
-  }
-
-  console.log('[mm-doctor v2] patient keyHash?', patientKeyHash ? 'yes' : 'pending (postMessage capture in flight)');
-
-  // Backend already returns a simple "First Last, CRED" displayName (see
-  // toSimpleDisplayName in lookup.js). This widget-side helper is only used
-  // to build the patient-typed fallback name when the patient says
-  // "Not your doctor?" — same rules: drop middle names from firstName,
-  // keep hyphenated last names, no credential (patient doesn't type one).
-  function simplePatientName(firstName, lastName) {
-    const tc = (s) => String(s || '')
-      .toLowerCase()
-      .replace(/(^|[\s\-'])([a-z])/g, (_, p, c) => p + c.toUpperCase());
-    const first = tc(firstName).split(/\s+/)[0] || '';
-    const last = tc(lastName).replace(/\s*-\s*/g, '-').trim();
-    return [first, last].filter(Boolean).join(' ');
-  }
-
-  function sid() {
-    return 'D' + Math.random().toString(36).slice(2, 7).toUpperCase()
-             + Math.random().toString(36).slice(2, 7).toUpperCase();
-  }
-  function setStatus(msg, isErr) {
-    statusEl.textContent = msg || '';
-    statusEl.className = 'status' + (isErr ? ' err' : '');
-  }
-  function esc(s) {
-    return String(s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-  function readSignals() {
-    return {
-      firstName: $('firstName').value.trim(),
-      lastName:  $('lastName').value.trim(),
-      phone:     $('phone').value.trim(),
-      clinic:    $('clinic').value.trim()
-    };
-  }
-  async function search() {
-    const s = readSignals();
-    if (!s.firstName || !s.lastName) { setStatus('Enter first and last name.', true); return; }
-    typedSignals = s; // remember for the "Not your doctor?" escape
-    setStatus('Searching national registry\u2026');
-    btn.disabled = true;
-    try {
-      if (inflight) inflight.abort();
-      inflight = new AbortController();
-      const res = await fetch(API_BASE + '/api/lookup-candidates', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(s), signal: inflight.signal
-      });
-      if (!res.ok) throw new Error('API ' + res.status);
-      const data = await res.json();
-      renderResult((data.candidates || [])[0] || null);
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      setStatus('Couldn\u2019t load. Try again.', true);
-    } finally { btn.disabled = false; }
-  }
-
-  // Single-candidate render. If c is null (backend returned 0 candidates)
-  // we jump straight to the "not-my-doctor" card using patient-typed info
-  // so they can still move on.
-  function renderResult(c) {
-    hideMainHeader();
-    searchUI.style.display = 'none';
-    selectedEl.style.display = 'block';
-    if (!c) {
-      renderNotMine({ reason: 'no_match' });
-      return;
-    }
-    renderMatch(c);
-  }
-
-  // Render the single doctor-match card with three equal-weight actions:
-  //   1) "This is my doctor!" — green primary, confirms the match
-  //   2) "Not my doctor, edit search" — outlined, back to search form
-  //   3) "Not my doctor, I'll send later" — outlined, flips text to
-  //      "No worries! Press next." and stashes a sendLater sentinel so the
-  //      patient can advance through the JotForm without confirming a provider.
-  // displayName comes back pre-simplified from the backend
-  // (e.g. "Mary Gallagher" / "Emily Silverman-Okeke, MD"). Clinic falls back
-  // to patient-typed when page scrape didn't surface one.
-  function renderMatch(c) {
-    const shownClinic = c.clinic || typedSignals.clinic || '';
-    const subs = [];
-    if (c.specialty) subs.push(esc(c.specialty));
-    if (shownClinic) subs.push(esc(shownClinic));
-    if (c.address && (!shownClinic || !shownClinic.includes(c.address))) subs.push(esc(c.address));
-    // NPI intentionally hidden from patient view — kept in the stash payload
-    // for backend/Monday but not shown on the match card.
-    selectedEl.innerHTML = `
-      <div class="selected-card">
-        <div class="selected-head">
-          <img src="${esc(c.photo_url)}" alt="">
-          <div>
-            <div class="nm">${esc(c.displayName || '')}</div>
-            ${subs.map(s => `<div class="sp">${s}</div>`).join('')}
-          </div>
-        </div>
-        <button type="button" class="confirm-btn" id="confirm-btn">This is my doctor!</button>
-      </div>
-      <button type="button" class="not-mine single" id="edit-search-btn">Not my doctor, edit search</button>
-      <button type="button" class="not-mine single" id="send-later-btn">Not my doctor, I'll send later</button>
-    `;
-    selectedEl.querySelector('#confirm-btn').addEventListener('click', () => confirmMatch(c));
-    selectedEl.querySelector('#edit-search-btn').addEventListener('click', () => {
-      console.log(DIAG, 'button: Not my doctor, edit search (no stash — returning to search view)');
-      backToSearch();
-    });
-    selectedEl.querySelector('#send-later-btn').addEventListener('click', (e) => handleSendLater(e.currentTarget));
-  }
-
-  // Render the "use what the patient typed" card. Shown only when the backend
-  // returns 0 candidates. This state auto-confirms on render — the patient's
-  // typed info becomes the de-facto confirmed doctor unless they click
-  // "edit search" and try again. There's no "This is my doctor!" button
-  // because there's nothing to match to; we just show a press-next hint.
-  function renderNotMine(_ctx) {
-    const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
-    const initial = (typedName[0] || '?').toUpperCase();
-    const typedClinic = typedSignals.clinic || '';
-    selectedEl.innerHTML = `
-      <div class="selected-card">
-        <div class="typed-head">
-          <div class="avatar">${esc(initial)}</div>
-          <div>
-            <div class="nm">${esc(typedName || 'Your doctor')}</div>
-            ${typedClinic ? `<div class="sp">${esc(typedClinic)}</div>` : ''}
-            <div class="sp">Not in our system \u2014 we&rsquo;ll use the doctor info you entered to find them.</div>
-          </div>
-        </div>
-        <div class="press-next-hint">\u2193 Press next below</div>
-      </div>
-      <button type="button" class="not-mine single" id="edit-search-btn">Not my doctor, edit search</button>
-    `;
-    selectedEl.querySelector('#edit-search-btn').addEventListener('click', () => {
-      console.log(DIAG, 'button: edit search (from 0-candidate auto-confirm state)');
-      backToSearch();
-    });
-    // Auto-confirm: we already searched once and got 0 hits. Stash the typed
-    // info immediately so the patient can just hit Next. If they change their
-    // mind and click "edit search", the next stash (from a successful match
-    // or another send_later) will overwrite this one in Redis.
-    confirmNotMine(typedName);
-  }
-
-  function backToSearch() {
-    selectedEl.style.display = 'none';
-    selectedEl.innerHTML = '';
-    searchUI.style.display = 'block';
-    showMainHeader();
-    setStatus('');
-  }
-
-  // "Not my doctor, I'll send later" — flip this button's text in place to
-  // "No worries! Press next." and stash a sendLater sentinel so the JotForm
-  // submit handler has a value to send. We intentionally do NOT collapse the
-  // other two buttons — patient can still change their mind and confirm or
-  // re-search until they hit Next on the page.
-  function handleSendLater(btnEl) {
-    console.log(DIAG, 'button: Not my doctor, I\u2019ll send later (send_later)');
-    const typedName = simplePatientName(typedSignals.firstName, typedSignals.lastName);
-    const doctor = {
-      action: 'send_later',
-      sendLater: true,
-      notMyDoctor: true,
-      npi: '',
-      displayName: typedName || '',
-      specialty: '',
-      address: '',
-      clinic: typedSignals.clinic || '',
-      // Patient-typed phone — never scraped.
-      phone: typedSignals.phone || ''
-    };
-    pendingDoctor = doctor;
-    // Fire-and-forget stash so the webhook can pick up the sendLater signal
-    // keyed on the same IP+keyHash. We swallow any error — button text has
-    // already flipped, and the submit path will also fire sendSubmit.
-    stashDoctorWithRetry(doctor, null, null);
-    try {
-      if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
-        JFCustomWidget.sendSubmit({ value: JSON.stringify(doctor), valid: true });
-      }
-    } catch (e) { /* non-fatal */ }
-    btnEl.textContent = 'No worries! Press next.';
-    btnEl.disabled = true;
-    btnEl.classList.add('send-later-confirmed');
-  }
-  // Hold the confirmed doctor payload so the JotForm 'submit' handler can forward it.
-  let pendingDoctor = null;
-  const DIAG = '[mm-doctor v2]';
-  console.log(DIAG, 'script loaded; JFCustomWidget?', typeof window.JFCustomWidget);
-
-  // Subscribe to every event we can so we can see what actually fires on submit.
-  if (window.JFCustomWidget && typeof JFCustomWidget.subscribe === 'function') {
-    ['ready','populate','submit'].forEach(evt => {
-      try {
-        JFCustomWidget.subscribe(evt, function (data) {
-          console.log(DIAG, 'event:', evt,
-            'pendingDoctor?', !!pendingDoctor,
-            'action:', pendingDoctor?.action || '(none — patient pressed Next without using the widget)');
-          if (evt === 'submit') {
-            try {
-              const value = pendingDoctor ? JSON.stringify(pendingDoctor) : '';
-              JFCustomWidget.sendSubmit({ value: value, valid: true });
-              console.log(DIAG, 'sendSubmit called with value length', value.length);
-            } catch (e) {
-              console.warn(DIAG, 'sendSubmit failed:', e.message);
-            }
-          }
-        });
-      } catch (e) {
-        console.warn(DIAG, 'subscribe(' + evt + ') failed:', e.message);
-      }
-    });
-    try { JFCustomWidget.requestFrameResize({ height: 640 }); } catch(_) {}
-  } else {
-    console.warn(DIAG, 'JFCustomWidget SDK not available — iframe-embed widget may not propagate values');
-  }
-
-  // Confirm the matched doctor. displayName comes in pre-simplified from the
-  // backend ("Mary Gallagher" / "Emily Silverman-Okeke, MD"); we pass it
-  // straight through. Address is page-scraped (may be empty — that's fine).
-  // Clinic prefers the scraped value but falls back to patient-typed when
-  // page scrape failed (aggregator sites block our fetch → no clinic).
-  function confirmMatch(c) {
-    console.log(DIAG, 'button: This is my doctor! (confirmed_match)');
-    const doctor = {
-      action: 'confirmed_match',
-      npi: c.npi || '',
-      displayName: c.displayName || '',
-      specialty: c.specialty || '',
-      address: c.address || '',
-      clinic: c.clinic || typedSignals.clinic || '',
-      // Doctor phone is ONLY what the patient typed — per Josh 2026-04-20.
-      // Backend scraper returns phone:'' by design; we never overwrite with scraped data.
-      phone: typedSignals.phone || ''
-    };
-    finishConfirm(doctor, c);
-  }
-
-  // Confirm the "Not your doctor" escape. Uses the patient-typed simple name
-  // and leaves NPI blank so the prescription PDF renders an empty NPI line.
-  // Clinic uses the patient-typed value (we never did a successful scrape
-  // for this path); specialty/address stay blank.
-  function confirmNotMine(typedName) {
-    console.log(DIAG, 'button: This is my doctor (typed-name fallback, confirmed_typed_name)');
-    const doctor = {
-      action: 'confirmed_typed_name',
-      notMyDoctor: true,
-      npi: '',
-      displayName: typedName || '',
-      specialty: '',
-      address: '',
-      clinic: typedSignals.clinic || '',
-      // Patient-typed phone — never scraped.
-      phone: typedSignals.phone || ''
-    };
-    finishConfirm(doctor, null);
-  }
-
-  function finishConfirm(doctor, originalCandidate) {
-    // b may be null in the 0-candidates path, where renderNotMine auto-confirms
-    // on render (no explicit "This is my doctor!" button in that view).
-    const b = selectedEl.querySelector('#confirm-btn');
-    if (b) b.disabled = true;
-    pendingDoctor = doctor;
-    console.log('[mm-doctor v2] doctor confirmed in widget:', pendingDoctor);
-    // Belt-and-suspenders: also call sendSubmit in case this widget type does
-    // propagate values (most iframe-embed widgets don't, hence the stash fallback).
-    try {
-      if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
-        JFCustomWidget.sendSubmit({ value: JSON.stringify(pendingDoctor), valid: true });
-        console.log('[mm-doctor v2] sendSubmit (on-confirm) fired');
-      }
-    } catch (e) {
-      console.warn('[mm-doctor v2] sendSubmit (on-confirm) failed:', e.message);
-    }
-    // Primary path: stash the doctor on the backend keyed by this browser's
-    // IP + patient keyHash. Retries on transient failure; on total failure the
-    // Confirm button flips to an actionable "tap to retry" state so the patient
-    // knows their doctor wasn't saved (prevents silent wifi-drop data loss).
-    stashDoctorWithRetry(pendingDoctor, b, originalCandidate);
-    if (b) {
-      b.textContent = '\u2713 Confirmed. Now press next';
-      b.classList.add('saved');
-    }
-  }
-  async function stashDoctorWithRetry(doctor, confirmBtn, originalCandidate) {
-    // Just-in-time: one last attempt to capture keyHash if timed retries missed
-    ensureKeyHash();
-    const payload = { doctor, keyHash: patientKeyHash };
-    const attempts = 3;
-    const delays = [0, 800, 2400]; // ms before each attempt
-    for (let i = 0; i < attempts; i++) {
-      if (delays[i]) await new Promise(r => setTimeout(r, delays[i]));
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 8000);
-        const res = await fetch(API_BASE + '/api/intake/stash-doctor', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        }).finally(() => clearTimeout(timer));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const j = await res.json();
-        console.log('[mm-doctor v2] stash-doctor ok on attempt', i + 1, j);
-        return;
-      } catch (e) {
-        console.warn('[mm-doctor v2] stash attempt', i + 1, 'failed:', e.message);
-      }
-    }
-    // All attempts failed — make it visible and actionable.
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = '\u26A0 Couldn\u2019t save doctor \u2014 tap to retry';
-      confirmBtn.style.background = '#b45309';
-      confirmBtn.style.borderColor = '#b45309';
-      // Re-arm so the next click retries. If we had a match candidate we
-      // re-run confirmMatch with it; otherwise we're in the not-my-doctor
-      // branch and retry with the patient-typed name.
-      confirmBtn.onclick = () => {
-        confirmBtn.textContent = 'Saving…';
-        confirmBtn.style.background = '';
-        confirmBtn.style.borderColor = '';
-        if (originalCandidate) {
-          confirmMatch(originalCandidate);
-        } else {
-          confirmNotMine(simplePatientName(typedSignals.firstName, typedSignals.lastName));
-        }
-      };
-    }
-  }
+  var nameInput = document.getElementById('doctorName');
+  var phoneInput = document.getElementById('doctorPhone');
+  var nameError = document.getElementById('nameError');
+  var phoneError = document.getElementById('phoneError');
 
   // Phone mask: auto-format to (###) ###-####
-  $('phone').addEventListener('input', function () {
-    const raw = this.value.replace(/\D/g, '').slice(0, 10);
-    let fmt = '';
+  phoneInput.addEventListener('input', function () {
+    var raw = this.value.replace(/\D/g, '').slice(0, 10);
+    var fmt = '';
     if (raw.length > 6) fmt = '(' + raw.slice(0,3) + ') ' + raw.slice(3,6) + '-' + raw.slice(6);
     else if (raw.length > 3) fmt = '(' + raw.slice(0,3) + ') ' + raw.slice(3);
     else if (raw.length > 0) fmt = '(' + raw;
     else fmt = '';
     this.value = fmt;
+    syncValue();
   });
 
-  btn.addEventListener('click', search);
-  ['firstName','lastName','phone','clinic'].forEach(id => {
-    $(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+  // Sync on every name keystroke too
+  nameInput.addEventListener('input', function () { syncValue(); });
+
+  // Clear error styling on focus
+  nameInput.addEventListener('focus', function () {
+    nameInput.classList.remove('error');
+    nameError.classList.remove('show');
   });
+  phoneInput.addEventListener('focus', function () {
+    phoneInput.classList.remove('error');
+    phoneError.classList.remove('show');
+  });
+
+  function getName() {
+    var raw = nameInput.value.trim();
+    return raw ? 'Dr. ' + raw : '';
+  }
+
+  function getPhoneRaw() {
+    return phoneInput.value.replace(/\D/g, '');
+  }
+
+  function buildPayload() {
+    return {
+      action: 'manual_entry',
+      displayName: getName(),
+      phone: phoneInput.value.trim(),
+      npi: '',
+      specialty: '',
+      address: '',
+      clinic: ''
+    };
+  }
+
+  function syncValue() {
+    var payload = buildPayload();
+    // Only send if we have at least a name
+    if (payload.displayName) {
+      try {
+        if (window.JFCustomWidget && typeof JFCustomWidget.sendSubmit === 'function') {
+          JFCustomWidget.sendSubmit({ value: JSON.stringify(payload), valid: true });
+        }
+      } catch (e) { /* non-fatal */ }
+    }
+  }
+
+  function validate() {
+    var valid = true;
+    if (!nameInput.value.trim()) {
+      nameInput.classList.add('error');
+      nameError.classList.add('show');
+      valid = false;
+    }
+    var digits = getPhoneRaw();
+    if (digits.length !== 10) {
+      phoneInput.classList.add('error');
+      phoneError.classList.add('show');
+      valid = false;
+    }
+    return valid;
+  }
+
+  // JFCustomWidget integration
+  if (window.JFCustomWidget && typeof JFCustomWidget.subscribe === 'function') {
+    ['ready', 'populate', 'submit'].forEach(function (evt) {
+      try {
+        JFCustomWidget.subscribe(evt, function (data) {
+          console.log('[mm-doctor v3] event:', evt);
+          if (evt === 'submit') {
+            var isValid = validate();
+            var payload = buildPayload();
+            try {
+              JFCustomWidget.sendSubmit({
+                value: JSON.stringify(payload),
+                valid: isValid
+              });
+              console.log('[mm-doctor v3] sendSubmit fired, valid:', isValid);
+            } catch (e) {
+              console.warn('[mm-doctor v3] sendSubmit failed:', e.message);
+            }
+          }
+          if (evt === 'populate' && data && data.value) {
+            // Re-populate fields if JotForm sends back saved data (e.g. back button)
+            try {
+              var saved = JSON.parse(data.value);
+              if (saved.displayName) {
+                // Strip "Dr. " prefix for the input field
+                var name = saved.displayName.replace(/^Dr\.\s*/i, '');
+                nameInput.value = name;
+              }
+              if (saved.phone) phoneInput.value = saved.phone;
+            } catch (e) { /* not valid JSON */ }
+          }
+        });
+      } catch (e) {
+        console.warn('[mm-doctor v3] subscribe(' + evt + ') failed:', e.message);
+      }
+    });
+    try { JFCustomWidget.requestFrameResize({ height: 320 }); } catch (_) {}
+  } else {
+    console.warn('[mm-doctor v3] JFCustomWidget SDK not available');
+  }
+
+  console.log('[mm-doctor v3] loaded — manual entry mode');
 })();
 </script>
 </body>
 </html>
-
